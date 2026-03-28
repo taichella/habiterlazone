@@ -1,0 +1,767 @@
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { Search, X, Crosshair, Radio, User, Mic, FileText, Lock, Unlock, LogOut, Edit, Trash2, Copy, Tag } from 'lucide-react';
+import { supabase } from './supabase';
+
+const PALETTE = { purple: '#A621FF', neutralBg: '#0A0A0A' };
+
+const TRANSLATIONS = {
+    fr: {
+        subtitle: "Journal de terrain(s)", searchPlaceholder: "Rechercher (lieu, tag)...",
+        clear: "Effacer", newSignal: "Nouveau Signal", editSignal: "Éditer le Signal", idPlace: "Identifiant / Lieu",
+        notes: "Notes de terrain...", mediaUrl: "URL Média", keywords: "Mots-clés (virgule)",
+        dateTimeStr: "Date et Heure", save: "Enregistrer", recordedOn: "Enregistré le", coords: "COORD", context: "Contexte & Tags",
+        lat: "Latitude", lng: "Longitude",
+        types: { text: "Texte", photo: "Photo", video: "Vidéo", audio: "Audio" },
+        selectHint: "Sélectionnez plusieurs tags pour relier les points.", timeline: "Chronologie",
+        aboutProjectBtn: "À Propos", aboutAuthorBtn: "Misia Forlen", aboutTitle: "À Propos",
+        authorTitle: "Misia Forlen", aboutProjectTitle: "Le Projet: Habiter la Zone",
+        aboutProjectDesc: "Une exploration de recherche-création documentant les conditions de vie des travailleurs mobiles dans les Zones Économiques Spéciales (ZES) et les grands chantiers industriels. Le projet cartographie les frontières invisibles, les infrastructures logistiques et les habitats précaires, questionnant la notion de 'care' dans la mobilité perpétuelle.",
+        aboutAuthorTitle: "L'Auteure: Misia Forlen", aboutAuthorDesc: "Architecte et doctorante au sein du programme RADIAN (Recherche en Art, Design, Innovation, Architecture en Normandie). Ses travaux se concentrent sur la cartographie et l'observation des modes de vie liés à l'hyper-mobilité du travail industriel.",
+        mapType: "Carte", mapStyleDark: "Sombre", mapStyleLight: "Clair", mapStyleSat: "Sat", directionView: "Angle de Vue",
+        login: "Connexion", email: "E-mail", password: "Mot de passe", enter: "Entrer",
+        edit: "Éditer", duplicate: "Dupliquer", delete: "Supprimer", deleteConfirm: "Êtes-vous sûr de vouloir supprimer ?",
+        manageTags: "Gérer les Tags", newTag: "Nouveau Tag", editTag: "Éditer le Tag", tagName: "Nom du tag", tagColor: "Couleur", addTag: "Ajouter"
+    },
+    en: {
+        subtitle: "Zone Mapping System", searchPlaceholder: "Search (location, tag)...",
+        clear: "Clear", newSignal: "New Signal", editSignal: "Edit Signal", idPlace: "ID / Location",
+        notes: "Field notes...", mediaUrl: "Media URL", keywords: "Keywords (comma)",
+        dateTimeStr: "Date & Time", save: "Save Record", recordedOn: "Recorded on", coords: "COORD", context: "Context & Tags",
+        lat: "Latitude", lng: "Longitude",
+        types: { text: "Text", photo: "Photo", video: "Video", audio: "Audio" },
+        selectHint: "Select multiple tags to connect points.", timeline: "Timeline",
+        aboutProjectBtn: "About", aboutAuthorBtn: "Misia Forlen", aboutTitle: "About",
+        authorTitle: "Misia Forlen", aboutProjectTitle: "The Project: Habiter la Zone",
+        aboutProjectDesc: "A research-creation exploration documenting the living conditions of mobile workers in Special Economic Zones (SEZ) and large industrial sites. The project maps invisible borders, logistical infrastructures, and precarious habitats, questioning the notion of 'care' in perpetual mobility.",
+        aboutAuthorTitle: "The Author: Misia Forlen", aboutAuthorDesc: "Architect and PhD candidate in the RADIAN program (Research in Art, Design, Innovation, Architecture in Normandy). Her work focuses on mapping and observing lifestyles tied to the hyper-mobility of industrial work.",
+        mapType: "Map", mapStyleDark: "Dark", mapStyleLight: "Light", mapStyleSat: "Sat", directionView: "View Angle",
+        login: "System Login", email: "Email", password: "Password", enter: "Enter",
+        edit: "Edit", duplicate: "Duplicate", delete: "Delete", deleteConfirm: "Are you sure you want to delete?",
+        manageTags: "Manage Tags", newTag: "New Tag", editTag: "Edit Tag", tagName: "Tag Name", tagColor: "Color", addTag: "Add"
+    }
+};
+
+const formatDateTime = (datetimeStr, lang) => {
+    if (!datetimeStr) return "";
+    const d = new Date(datetimeStr);
+    if (isNaN(d.getTime())) return datetimeStr;
+    
+    if (lang === 'fr') {
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${day}-${month}-${year} à ${hours}:${minutes}`;
+    } else {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        let hours = d.getHours();
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        const strHours = String(hours).padStart(2, '0');
+        return `${year}-${month}-${day} at ${strHours}:${minutes} ${ampm}`;
+    }
+};
+
+const App = () => {
+    const [lang, setLang] = useState('fr');
+    const t = TRANSLATIONS[lang]; 
+    
+    const [memories, setMemories] = useState([]);
+    const [dbTags, setDbTags] = useState([]); 
+    const [filteredMemories, setFilteredMemories] = useState([]);
+    const [selectedMemory, setSelectedMemory] = useState(null);
+    const [aboutTab, setAboutTab] = useState(null);
+    const [mapStyle, setMapStyle] = useState('dark');
+    
+    const [activeTags, setActiveTags] = useState([]);
+    const [searchQuery, setSearchQuery] = useState("");
+    
+    const [session, setSession] = useState(null);
+    const [showLogin, setShowLogin] = useState(false);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+
+    const [isAdding, setIsAdding] = useState(false);
+    const [editingId, setEditingId] = useState(null); 
+    const [newMemory, setNewMemory] = useState({ lat: "", lng: "", title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: "" });
+    
+    // Estado para a tela cheia restaurado
+    const [fullScreenItem, setFullScreenItem] = useState(null);
+    
+    // Gerenciador de Tags
+    const [showTagManager, setShowTagManager] = useState(false);
+    const [newTagName, setNewTagName] = useState("");
+    const [newTagColor, setNewTagColor] = useState("#A621FF");
+    const [editingTagId, setEditingTagId] = useState(null);
+
+    const mapRef = useRef(null);
+    const mapInstanceRef = useRef(null);
+    const tileLayerRef = useRef(null);
+    const markersRef = useRef({});
+    const linesRef = useRef([]);
+    const timelineRefs = useRef({});
+
+    const getTagColor = (tagName) => {
+        const tag = dbTags.find(t => t.name.toLowerCase() === tagName.toLowerCase());
+        return tag ? tag.color : '#FFFFFF';
+    };
+
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+        return () => subscription.unsubscribe();
+    }, []);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            const { data: mData } = await supabase.from('markers').select('*');
+            if (mData) setMemories(mData);
+
+            const { data: tData } = await supabase.from('tags').select('*');
+            if (tData) setDbTags(tData);
+        };
+        fetchData();
+    }, []);
+
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) alert("Erro: " + error.message);
+        else {
+            setShowLogin(false);
+            setEmail('');
+            setPassword('');
+        }
+    };
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+    };
+
+    useEffect(() => {
+        if (selectedMemory && timelineRefs.current[selectedMemory.id]) {
+            timelineRefs.current[selectedMemory.id].scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, [selectedMemory]);
+
+    useEffect(() => {
+        let result = memories;
+        if (activeTags.length > 0) {
+            result = result.filter(m => m.tags && m.tags.some(tag => activeTags.includes(tag.toLowerCase())));
+        }
+        if (searchQuery.trim() !== "") {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(m => 
+                (m.title && m.title.toLowerCase().includes(query)) ||
+                (m.description && m.description.toLowerCase().includes(query)) ||
+                (m.tags && m.tags.some(t => t.toLowerCase().includes(query)))
+            );
+        }
+        setFilteredMemories(result);
+    }, [memories, activeTags, searchQuery]);
+
+    const timelineMemories = useMemo(() => {
+        return [...filteredMemories].sort((a, b) => new Date(b.date) - new Date(a.date));
+    }, [filteredMemories]);
+
+    useEffect(() => {
+        if (!mapInstanceRef.current && mapRef.current) {
+            const map = L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([49.52, -1.80], 12);
+            const initialLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(map);
+            tileLayerRef.current = initialLayer;
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            setTimeout(() => map.invalidateSize(), 250);
+
+            map.on('click', (e) => {
+                supabase.auth.getSession().then(({ data: { session } }) => {
+                    if (session && !showTagManager) { 
+                        const now = new Date();
+                        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                        const localDatetime = now.toISOString().slice(0, 16);
+                        
+                        setEditingId(null); 
+                        setNewMemory({ lat: e.latlng.lat, lng: e.latlng.lng, title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: localDatetime });
+                        setIsAdding(true);
+                        setSelectedMemory(null);
+                        setAboutTab(null);
+                    }
+                });
+            });
+            mapInstanceRef.current = map;
+        }
+
+        return () => {
+            if (mapInstanceRef.current) {
+                mapInstanceRef.current.remove();
+                mapInstanceRef.current = null;
+            }
+        };
+    }, [showTagManager]);
+
+    useEffect(() => {
+        if (!mapInstanceRef.current || !tileLayerRef.current) return;
+        mapInstanceRef.current.removeLayer(tileLayerRef.current);
+        let url = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+        if (mapStyle === 'light') url = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+        else if (mapStyle === 'satellite') url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+
+        tileLayerRef.current = L.tileLayer(url, { subdomains: 'abcd', maxZoom: 20 }).addTo(mapInstanceRef.current);
+    }, [mapStyle]);
+
+    const handleSelectMemory = (mem) => {
+        setSelectedMemory(mem);
+        setAboutTab(null);
+        setIsAdding(false);
+        if (mapInstanceRef.current) {
+            const currentZoom = mapInstanceRef.current.getZoom();
+            mapInstanceRef.current.setView([mem.lat, mem.lng], currentZoom, { animate: true, duration: 1.2 });
+        }
+    };
+
+    useEffect(() => {
+        const map = mapInstanceRef.current;
+        if (!map) return;
+
+        Object.values(markersRef.current).forEach(m => map.removeLayer(m));
+        linesRef.current.forEach(l => map.removeLayer(l));
+        markersRef.current = {};
+        linesRef.current = [];
+
+        filteredMemories.forEach(mem => {
+            const coreColor = mapStyle === 'light' ? '#0A0A0A' : '#ffffff';
+            const coneColor = mapStyle === 'light' ? 'rgba(166, 33, 255, 0.4)' : 'rgba(166, 33, 255, 0.65)';
+            const strokeColor = mapStyle === 'light' ? '#7C3AED' : '#D8B4FE';
+            const rot = mem.direction || 0;
+            
+            let boxShadowString = 'none';
+            if (mem.tags && mem.tags.length > 0) {
+               const shadows = mem.tags.map((tag, index) => `0 0 0 ${(index + 1) * 2}px ${getTagColor(tag)}`);
+               boxShadowString = shadows.join(', ');
+            }
+
+            const iconHtml = `
+                <div class="marker-container">
+                    <svg width="48" height="48" viewBox="0 0 48 48" style="position: absolute; top: 0; left: 0; transform: rotate(${rot}deg); transform-origin: center; pointer-events: none; overflow: visible;">
+                        <path d="M24,24 L6,4 A26,26 0 0,1 42,4 Z" class="cone-path" fill="${coneColor}" stroke="${strokeColor}" stroke-width="1.5" />
+                    </svg>
+                    <div class="marker-core" style="box-shadow: ${boxShadowString}; background-color: ${coreColor};"></div>
+                </div>
+            `;
+            
+            const icon = L.divIcon({ className: 'custom-marker', html: iconHtml, iconSize: [48, 48], iconAnchor: [24, 24] });
+            const marker = L.marker([mem.lat, mem.lng], { icon })
+                .addTo(map)
+                .on('click', (e) => {
+                    L.DomEvent.stopPropagation(e);
+                    handleSelectMemory(mem);
+                });
+            markersRef.current[mem.id] = marker;
+        });
+
+        if (filteredMemories.length > 1 && (activeTags.length > 0 || searchQuery)) {
+            for (let i = 0; i < filteredMemories.length; i++) {
+                for (let j = i + 1; j < filteredMemories.length; j++) {
+                    const p1 = filteredMemories[i];
+                    const p2 = filteredMemories[j];
+                    const polyline = L.polyline([[p1.lat, p1.lng], [p2.lat, p2.lng]], 
+                        { color: PALETTE.purple, weight: 2, opacity: 0.6, dashArray: '5, 5' }
+                    ).addTo(map);
+                    linesRef.current.push(polyline);
+                }
+            }
+        }
+    }, [filteredMemories, selectedMemory, activeTags, searchQuery, mapStyle, dbTags]); 
+
+    const closeModal = () => {
+        setIsAdding(false);
+        setEditingId(null);
+        setNewMemory({ lat: "", lng: "", title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: "" });
+    };
+
+    const handleDeleteMemory = async (id, e) => {
+        e.stopPropagation(); 
+        if (window.confirm(t.deleteConfirm)) {
+            const { error } = await supabase.from('markers').delete().eq('id', id);
+            if (error) {
+                alert("Erro ao excluir: " + error.message);
+            } else {
+                setMemories(memories.filter(m => m.id !== id));
+                if (selectedMemory?.id === id) setSelectedMemory(null);
+            }
+        }
+    };
+
+    const handleEditClick = (mem, e) => {
+        e.stopPropagation();
+        setNewMemory({ 
+            ...mem, 
+            datetime: mem.date,
+            tags: mem.tags ? mem.tags.join(', ') : "" 
+        });
+        setEditingId(mem.id);
+        setIsAdding(true);
+    };
+
+    const handleDuplicateClick = (mem, e) => {
+        e.stopPropagation();
+        setNewMemory({ 
+            ...mem, 
+            title: mem.title + " (Copie)",
+            datetime: mem.date,
+            tags: mem.tags ? mem.tags.join(', ') : "",
+            lat: mem.lat + 0.005,
+            lng: mem.lng + 0.005 
+        });
+        setEditingId(null);
+        setIsAdding(true);
+    };
+
+    const handleSaveMemory = async () => {
+        if (!newMemory.title || newMemory.lat === "" || newMemory.lng === "" || !newMemory.datetime) return;
+        
+        const memoryData = {
+            title: newMemory.title,
+            lat: parseFloat(newMemory.lat),
+            lng: parseFloat(newMemory.lng),
+            type: newMemory.type,
+            content: newMemory.content,
+            description: newMemory.description,
+            tags: newMemory.tags.split(',').map(t => t.trim().toLowerCase()).filter(t => t),
+            date: newMemory.datetime,
+            direction: newMemory.direction
+        };
+
+        if (editingId) {
+            const { error } = await supabase.from('markers').update(memoryData).eq('id', editingId);
+            if (error) alert("Erro: " + error.message);
+            else {
+                setMemories(memories.map(m => m.id === editingId ? { ...memoryData, id: editingId } : m));
+                closeModal();
+            }
+        } else {
+            const newId = Date.now();
+            const memoryToSave = { ...memoryData, id: newId };
+            const { error } = await supabase.from('markers').insert([memoryToSave]);
+            if (error) alert("Erro: " + error.message);
+            else {
+                setMemories([...memories, memoryToSave]);
+                closeModal();
+            }
+        }
+    };
+
+    // --- GERENCIAMENTO DE TAGS ---
+    const handleEditTagClick = (tag) => {
+        setEditingTagId(tag.id);
+        setNewTagName(tag.name);
+        setNewTagColor(tag.color);
+    };
+
+    const handleCancelTagEdit = () => {
+        setEditingTagId(null);
+        setNewTagName("");
+        setNewTagColor("#A621FF");
+    };
+
+    const handleSaveTag = async () => {
+        if (!newTagName.trim()) return;
+        const tagData = { name: newTagName.trim().toLowerCase(), color: newTagColor };
+        
+        if (editingTagId) {
+            const { error } = await supabase.from('tags').update(tagData).eq('id', editingTagId);
+            if (error) alert("Erro ao atualizar tag: " + error.message);
+            else {
+                setDbTags(dbTags.map(t => t.id === editingTagId ? { ...t, ...tagData } : t));
+                handleCancelTagEdit();
+            }
+        } else {
+            const { data, error } = await supabase.from('tags').insert([tagData]).select();
+            if (error) alert("Erro ao criar tag: " + error.message);
+            else {
+                setDbTags([...dbTags, data[0]]);
+                setNewTagName("");
+            }
+        }
+    };
+
+    const handleDeleteTag = async (id) => {
+        if (window.confirm(t.deleteConfirm)) {
+            const { error } = await supabase.from('tags').delete().eq('id', id);
+            if (error) alert("Erro ao excluir tag: " + error.message);
+            else setDbTags(dbTags.filter(tag => tag.id !== id));
+        }
+    };
+
+    const toggleTag = (tag) => setActiveTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+
+    const uniqueTags = useMemo(() => {
+        const tags = new Set();
+        memories.forEach(m => {
+            if (m.tags) m.tags.forEach(t => tags.add(t.toLowerCase()))
+        });
+        return Array.from(tags).sort();
+    }, [memories]);
+
+    return (
+        <div className="relative w-full h-screen font-mono text-gray-200">
+            <div ref={mapRef} id="map" className="h-full w-full"></div>
+
+            <div className="absolute top-0 left-0 w-full md:w-[380px] p-4 z-[1000] pointer-events-none flex flex-col gap-4">
+                <div className="industrial-panel p-5 border-l-4 border-l-hlzPurple pointer-events-auto shrink-0 flex flex-col max-h-[90vh] overflow-y-auto">
+                    <div className="flex justify-between items-center mb-3">
+                        <div className="flex gap-2 items-center">
+                            <button onClick={() => {setAboutTab('project'); closeModal(); setSelectedMemory(null);}} className="text-[10px] text-gray-400 hover:text-white underline">{t.aboutProjectBtn}</button>
+                            <span className="text-[10px] text-gray-700">|</span>
+                            <button onClick={() => {setAboutTab('author'); closeModal(); setSelectedMemory(null);}} className="text-[10px] text-gray-400 hover:text-white underline">{t.aboutAuthorBtn}</button>
+                        </div>
+                        <div className="flex gap-2 items-center">
+                            {session ? (
+                                <>
+                                    <button onClick={() => setShowTagManager(true)} className="text-gray-400 hover:text-hlzPurple" title={t.manageTags}><Tag size={14} /></button>
+                                    <button onClick={handleLogout} className="text-hlzPurple hover:text-white" title="Logout"><LogOut size={14} /></button>
+                                </>
+                            ) : (
+                                <button onClick={() => setShowLogin(true)} className="text-gray-600 hover:text-hlzPurple" title="Login Admin"><Lock size={14} /></button>
+                            )}
+                            <span className="text-[10px] text-gray-700">|</span>
+                            <button onClick={() => setLang('fr')} className={`px-2 py-0.5 text-[10px] font-bold border ${lang === 'fr' ? 'bg-hlzPurple text-black border-hlzPurple' : 'bg-black text-gray-500 border-gray-800'}`}>FR</button>
+                            <button onClick={() => setLang('en')} className={`px-2 py-0.5 text-[10px] font-bold border ${lang === 'en' ? 'bg-hlzPurple text-black border-hlzPurple' : 'bg-black text-gray-500 border-gray-800'}`}>EN</button>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-between items-start mb-2 border-b border-gray-800 pb-2">
+                        <div>
+                            <h1 className="text-4xl font-bold text-white tracking-tighter leading-none flex items-center gap-3">
+                                <span className="block">Habiter<br />la Zone</span>
+                                {session ? (
+                                    <span className="text-[10px] text-green-400 border border-green-400 px-1 bg-green-400/10 tracking-normal font-normal self-center translate-y-[-2px] flex items-center gap-1"><Unlock size={10}/> ADMIN</span>
+                                ) : (
+                                    <span className="text-[10px] text-hlzPurple border border-hlzPurple px-1 bg-hlzPurple/10 tracking-normal font-normal self-center translate-y-[-2px]">SYS.ONLINE</span>
+                                )}
+                            </h1>
+                            <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">{t.subtitle}</p>
+                        </div>
+                    </div>
+                    
+                    <div className="relative mb-4 group mt-4">
+                        <input type="text" placeholder={t.searchPlaceholder} className="w-full industrial-input p-2 pl-8 text-sm focus:border-hlzPurple transition-colors" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                        <div className="absolute left-2 top-2.5 text-gray-500 group-focus-within:text-hlzPurple transition-colors"><Search size={14} /></div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 mb-2 max-h-[120px] overflow-y-auto">
+                        {uniqueTags.map(tag => {
+                            const color = getTagColor(tag);
+                            const isActive = activeTags.includes(tag);
+                            return (
+                                <button key={tag} onClick={() => toggleTag(tag)} style={{ borderColor: isActive ? color : '#333', color: isActive ? '#000' : color, backgroundColor: isActive ? color : 'transparent' }} className={`text-[10px] px-2 py-0.5 border transition-all uppercase hover:border-white`}>
+                                    #{tag}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    
+                    <div className="flex justify-between items-center h-4 mb-3">
+                        <span className="text-[9px] text-gray-600">{t.selectHint}</span>
+                        {activeTags.length > 0 && (
+                            <button onClick={() => setActiveTags([])} className="text-[10px] text-gray-500 underline decoration-hlzPurple hover:text-white">{t.clear} ({activeTags.length})</button>
+                        )}
+                    </div>
+
+                    <div className="flex justify-between items-center pt-3 border-t border-gray-800">
+                        <span className="text-[9px] text-gray-500 uppercase tracking-widest">{t.mapType}:</span>
+                        <div className="flex gap-1">
+                            <button onClick={() => setMapStyle('dark')} className={`px-2 py-0.5 text-[9px] font-bold border uppercase transition-colors ${mapStyle === 'dark' ? 'bg-hlzPurple text-black border-hlzPurple' : 'bg-black text-gray-500 border-gray-800'}`}>{t.mapStyleDark}</button>
+                            <button onClick={() => setMapStyle('light')} className={`px-2 py-0.5 text-[9px] font-bold border uppercase transition-colors ${mapStyle === 'light' ? 'bg-gray-200 text-black border-gray-200' : 'bg-black text-gray-500 border-gray-800'}`}>{t.mapStyleLight}</button>
+                            <button onClick={() => setMapStyle('satellite')} className={`px-2 py-0.5 text-[9px] font-bold border uppercase transition-colors ${mapStyle === 'satellite' ? 'bg-green-700 text-white border-green-700' : 'bg-black text-gray-500 border-gray-800'}`}>{t.mapStyleSat}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="absolute bottom-0 left-0 md:top-0 md:right-0 md:left-auto w-full md:w-[420px] h-[40vh] md:h-full p-4 z-[950] pointer-events-none flex flex-col">
+                <div className="industrial-panel pointer-events-auto flex-1 flex flex-col shadow-2xl md:border-l md:border-t-0 border-t border-hlzPurple/50 overflow-hidden">
+                    <div className="p-4 pb-2 border-b border-gray-800 bg-[#0a0a0af0] z-20 shrink-0">
+                        <h3 className="text-[10px] text-gray-500 uppercase tracking-widest flex justify-between"><span>{t.timeline}</span><span className="text-hlzPurple">[{timelineMemories.length}]</span></h3>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+                        {timelineMemories.map(mem => {
+                            const isExpanded = selectedMemory?.id === mem.id;
+                            const displayDate = formatDateTime(mem.date, lang);
+
+                            return (
+                                <div key={mem.id} ref={el => timelineRefs.current[mem.id] = el} onClick={() => handleSelectMemory(mem)} className={`bg-[#050505] border transition-all duration-300 cursor-pointer group ${isExpanded ? 'border-hlzPurple shadow-[0_0_15px_rgba(166,33,255,0.15)]' : 'border-gray-800 hover:border-gray-600'}`}>
+                                    <div className="p-3">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <h4 className={`text-sm font-bold pr-2 transition-colors ${isExpanded ? 'text-hlzPurple whitespace-normal' : 'text-white truncate group-hover:text-hlzPurple'}`}>{mem.title}</h4>
+                                            <span className="text-[9px] text-gray-500 whitespace-nowrap pt-1 bg-gray-900 px-1">{displayDate}</span>
+                                        </div>
+                                        {!isExpanded && (
+                                            <div className="flex flex-wrap gap-1">
+                                                {mem.tags && mem.tags.slice(0, 4).map(tag => (<span key={tag} style={{ borderColor: getTagColor(tag), color: getTagColor(tag) }} className="text-[8px] px-1 border uppercase opacity-70">#{tag}</span>))}
+                                                {mem.tags && mem.tags.length > 4 && <span className="text-[8px] text-gray-600">+{mem.tags.length - 4}</span>}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {isExpanded && (
+                                        <div className="px-3 pb-3 border-t border-gray-900 bg-black/40 fade-in">
+                                            
+                                            {/* BLOCO DE MÍDIA RESTAURADO COM CLIQUE PARA TELA CHEIA */}
+                                            <div className="my-3 border border-gray-800 relative flex items-center justify-center overflow-hidden bg-black min-h-[150px]">
+                                                {mem.type === 'photo' && mem.content && (
+                                                    <img 
+                                                        src={mem.content} 
+                                                        alt={mem.title} 
+                                                        onClick={() => setFullScreenItem({ type: 'photo', src: mem.content })} 
+                                                        className="w-full h-auto max-h-[300px] object-contain grayscale hover:grayscale-0 transition-all duration-500 cursor-pointer" 
+                                                        title="Clique pour agrandir"
+                                                    />
+                                                )}
+                                                {mem.type === 'video' && mem.content && (
+                                                    <div className="relative w-full cursor-pointer group" onClick={() => setFullScreenItem({ type: 'video', src: mem.content })}>
+                                                        <video src={mem.content} className="w-full h-auto max-h-[300px] object-contain opacity-70 group-hover:opacity-100 transition-opacity"></video>
+                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                                            <span className="bg-hlzPurple text-black text-[10px] font-bold px-3 py-1 uppercase tracking-widest">▶ Play</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {mem.type === 'audio' && (
+                                                    <div className="p-4 w-full flex flex-col items-center justify-center"><Mic size={24} color="#A621FF" className="mb-2" /><audio src={mem.content} controls className="w-full h-8 opacity-80" /></div>
+                                                )}
+                                                {mem.type === 'text' && <FileText size={32} color="#555" />}
+                                            </div>
+
+                                            {mem.description && <p className="text-xs text-gray-400 leading-relaxed mb-3 border-l-2 border-hlzPurple pl-3 text-justify">{mem.description}</p>}
+
+                                            <div className="flex flex-wrap gap-1.5 mb-3">
+                                                {mem.tags && mem.tags.map(tag => (<span key={tag} style={{color: getTagColor(tag), borderColor: getTagColor(tag)}} className="text-[9px] px-1.5 py-0.5 border border-opacity-40 bg-opacity-10 bg-white uppercase tracking-wider">#{tag}</span>))}
+                                            </div>
+                                            
+                                            <div className="flex items-center justify-between border-t border-gray-900 pt-2 mt-2">
+                                                <div className="flex items-center text-[9px] text-gray-600 font-mono gap-1"><Crosshair size={10} /><span>{mem.lat.toFixed(4)} ; {mem.lng.toFixed(4)}</span></div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[8px] text-gray-600 uppercase">{t.directionView}</span>
+                                                    <div className="relative w-6 h-6 flex items-center justify-center border border-[#1e2029] bg-[#0a0a0c] rounded-full overflow-hidden">
+                                                        <svg width="24" height="24" viewBox="0 0 48 48" style={{ position: 'absolute', transform: `rotate(${mem.direction || 0}deg)` }}><path d="M24,24 L6,4 A26,26 0 0,1 42,4 Z" fill="#A621FF" /></svg>
+                                                        <div className="absolute w-1.5 h-1.5 bg-white transform rotate-45 z-10 shadow-[0_0_5px_rgba(255,255,255,0.8)]"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {session && (
+                                                <div className="flex justify-end gap-3 mt-4 pt-3 border-t border-gray-800">
+                                                    <button onClick={(e) => handleEditClick(mem, e)} className="text-gray-400 hover:text-blue-400 flex items-center gap-1 text-[10px] uppercase tracking-widest transition-colors"><Edit size={12}/> {t.edit}</button>
+                                                    <button onClick={(e) => handleDuplicateClick(mem, e)} className="text-gray-400 hover:text-green-400 flex items-center gap-1 text-[10px] uppercase tracking-widest transition-colors"><Copy size={12}/> {t.duplicate}</button>
+                                                    <button onClick={(e) => handleDeleteMemory(mem.id, e)} className="text-gray-400 hover:text-red-500 flex items-center gap-1 text-[10px] uppercase tracking-widest transition-colors"><Trash2 size={12}/> {t.delete}</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+
+            {/* MODAL DE GERENCIAMENTO DE TAGS */}
+            {showTagManager && session && (
+                <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="industrial-panel p-6 w-full max-w-md shadow-[0_0_50px_rgba(166,33,255,0.2)] border-hlzPurple fade-in">
+                        <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-2">
+                            <h2 className="text-xl font-bold text-white uppercase flex items-center gap-2"><Tag size={18}/> {t.manageTags}</h2>
+                            <button onClick={() => { setShowTagManager(false); handleCancelTagEdit(); }} className="text-gray-500 hover:text-hlzPurple"><X /></button>
+                        </div>
+                        
+                        <div className="max-h-[40vh] overflow-y-auto mb-6 space-y-2 pr-2">
+                            {dbTags.map(tag => (
+                                <div key={tag.id} className={`flex justify-between items-center bg-[#050505] border p-2 transition-colors ${editingTagId === tag.id ? 'border-hlzPurple' : 'border-gray-800 hover:border-gray-600'}`}>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-4 h-4 rounded-full border border-gray-500" style={{ backgroundColor: tag.color }}></div>
+                                        <span className="text-sm uppercase tracking-wider">#{tag.name}</span>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <button onClick={() => handleEditTagClick(tag)} className="text-gray-500 hover:text-blue-400 transition-colors"><Edit size={14}/></button>
+                                        <button onClick={() => handleDeleteTag(tag.id)} className="text-gray-500 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
+                                    </div>
+                                </div>
+                            ))}
+                            {dbTags.length === 0 && <p className="text-xs text-gray-500">Aucun tag trouvé.</p>}
+                        </div>
+
+                        <div className="border-t border-gray-800 pt-4">
+                            <h3 className="text-[10px] text-gray-500 uppercase tracking-widest mb-3">
+                                {editingTagId ? t.editTag : t.newTag}
+                            </h3>
+                            <div className="flex gap-2 items-center">
+                                <input 
+                                    type="text" 
+                                    placeholder={t.tagName} 
+                                    className="flex-1 industrial-input p-2 text-sm" 
+                                    value={newTagName} 
+                                    onChange={e => setNewTagName(e.target.value)} 
+                                />
+                                <input 
+                                    type="color" 
+                                    className="w-10 h-10 bg-transparent cursor-pointer border-0 p-0" 
+                                    value={newTagColor} 
+                                    onChange={e => setNewTagColor(e.target.value)} 
+                                    title={t.tagColor}
+                                />
+                                {editingTagId ? (
+                                    <div className="flex gap-1">
+                                        <button onClick={handleSaveTag} className="bg-hlzPurple text-black font-bold px-3 py-2 uppercase text-[10px] hover:bg-white transition-colors">{t.save}</button>
+                                        <button onClick={handleCancelTagEdit} className="bg-gray-800 text-gray-400 font-bold px-3 py-2 uppercase text-[10px] hover:bg-gray-700 transition-colors"><X size={14}/></button>
+                                    </div>
+                                ) : (
+                                    <button onClick={handleSaveTag} className="bg-hlzPurple text-black font-bold px-4 py-2 uppercase text-[10px] hover:bg-white transition-colors">{t.addTag}</button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showLogin && (
+                <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="industrial-panel p-6 w-full max-w-sm shadow-[0_0_50px_rgba(166,33,255,0.2)] border-hlzPurple fade-in">
+                        <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-2">
+                            <h2 className="text-xl font-bold text-white uppercase flex items-center gap-2"><Lock size={18}/> {t.login}</h2>
+                            <button onClick={() => setShowLogin(false)} className="text-gray-500 hover:text-hlzPurple"><X /></button>
+                        </div>
+                        <form onSubmit={handleLogin} className="space-y-4">
+                            <input type="email" placeholder={t.email} required className="w-full industrial-input p-3" value={email} onChange={e => setEmail(e.target.value)} />
+                            <input type="password" placeholder={t.password} required className="w-full industrial-input p-3" value={password} onChange={e => setPassword(e.target.value)} />
+                            <button type="submit" className="w-full bg-hlzPurple hover:bg-white hover:text-black text-black font-bold py-3 uppercase tracking-widest transition-all">{t.enter}</button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {isAdding && session && (
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[1100] w-11/12 max-w-md">
+                    <div className="industrial-panel p-6 shadow-[0_0_50px_rgba(0,0,0,0.9)] border-hlzPurple">
+                        <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-2">
+                            <h2 className="text-xl font-bold text-white uppercase">{editingId ? t.editSignal : t.newSignal}</h2>
+                            <button onClick={closeModal} className="text-gray-500 hover:text-hlzPurple"><X /></button>
+                        </div>
+                        <div className="space-y-4">
+                            <input type="text" placeholder={t.idPlace} className="w-full industrial-input p-3" value={newMemory.title} onChange={e => setNewMemory({...newMemory, title: e.target.value})} />
+                            
+                            <div className="flex gap-4">
+                                <div className="flex-1 flex flex-col gap-1">
+                                    <label className="text-[10px] text-gray-500 uppercase tracking-widest">{t.lat}</label>
+                                    <input type="number" step="any" className="w-full industrial-input p-2 text-sm" value={newMemory.lat} onChange={e => setNewMemory({...newMemory, lat: e.target.value})} />
+                                </div>
+                                <div className="flex-1 flex flex-col gap-1">
+                                    <label className="text-[10px] text-gray-500 uppercase tracking-widest">{t.lng}</label>
+                                    <input type="number" step="any" className="w-full industrial-input p-2 text-sm" value={newMemory.lng} onChange={e => setNewMemory({...newMemory, lng: e.target.value})} />
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-1">
+                                <label className="text-[10px] text-gray-500 uppercase tracking-widest">{t.dateTimeStr}</label>
+                                <input type="datetime-local" className="w-full industrial-input p-2 text-sm" value={newMemory.datetime} onChange={e => setNewMemory({...newMemory, datetime: e.target.value})} />
+                            </div>
+
+                            <div className="flex gap-2">
+                                {['text', 'photo', 'video', 'audio'].map(type => (
+                                    <button key={type} onClick={() => setNewMemory({...newMemory, type})} className={`flex-1 py-1 text-[10px] uppercase border transition-colors ${newMemory.type === type ? 'bg-hlzPurple text-black border-hlzPurple font-bold' : 'border-gray-700 text-gray-500 hover:border-hlzPurple'}`}>{t.types[type]}</button>
+                                ))}
+                            </div>
+                            <div className="flex justify-between items-center bg-[#050505] border border-gray-800 p-3">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-xs text-gray-500 uppercase">{t.directionView}:</span>
+                                    <div className="relative w-12 h-12 flex items-center justify-center border-2 border-[#1e2029] bg-[#0a0a0c] rounded-full overflow-hidden shadow-[0_0_15px_rgba(166,33,255,0.1)]">
+                                        <svg width="48" height="48" viewBox="0 0 48 48" style={{ position: 'absolute', transform: `rotate(${newMemory.direction || 0}deg)`, transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}><path d="M24,24 L6,4 A26,26 0 0,1 42,4 Z" fill="rgba(166, 33, 255, 0.6)" stroke="#D8B4FE" strokeWidth="1.5" /></svg>
+                                        <div className="absolute w-3 h-3 bg-white transform rotate-45 z-10 shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
+                                    </div>
+                                </div>
+                                <div className="flex gap-1">
+                                    {[{v: 0, l: '↑'}, {v: 90, l: '→'}, {v: 180, l: '↓'}, {v: 270, l: '←'}].map(dir => (
+                                        <button key={dir.v} onClick={() => setNewMemory({...newMemory, direction: dir.v})} className={`w-8 h-8 flex items-center justify-center border text-sm transition-colors ${newMemory.direction === dir.v ? 'bg-hlzPurple text-black border-hlzPurple' : 'border-gray-700 text-gray-500 hover:border-hlzPurple hover:text-white'}`}>{dir.l}</button>
+                                    ))}
+                                </div>
+                            </div>
+                            <textarea placeholder={t.notes} className="w-full industrial-input p-3 h-24 resize-none" value={newMemory.description} onChange={e => setNewMemory({...newMemory, description: e.target.value})}></textarea>
+                            <input type="text" placeholder={t.mediaUrl} className="w-full industrial-input p-3 text-xs" value={newMemory.content} onChange={e => setNewMemory({...newMemory, content: e.target.value})} />
+                            <input type="text" placeholder={t.keywords} className="w-full industrial-input p-3" value={newMemory.tags} onChange={e => setNewMemory({...newMemory, tags: e.target.value})} />
+                            <button onClick={handleSaveMemory} className="w-full bg-hlzPurple hover:bg-white hover:text-black text-black font-bold py-3 uppercase tracking-widest transition-all">{t.save}</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {aboutTab && (
+                <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="industrial-panel p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto fade-in shadow-[0_0_50px_rgba(166,33,255,0.2)] border-hlzPurple">
+                        <div className="flex justify-between items-start mb-6 border-b border-gray-800 pb-4">
+                            <div>
+                                <div className="flex items-center gap-2 mb-2"><span className="w-1.5 h-1.5 bg-hlzPurple animate-pulse"></span><p className="text-hlzPurple text-[10px] tracking-widest font-bold uppercase">INFO SYS</p></div>
+                                <h2 className="text-3xl font-bold text-white uppercase leading-none tracking-tight">{aboutTab === 'project' ? t.aboutTitle : t.authorTitle}</h2>
+                            </div>
+                            <button onClick={() => setAboutTab(null)} className="text-gray-600 hover:text-white transition-colors"><X size={24}/></button>
+                        </div>
+                        <div className="flex gap-6 mb-8 border-b border-gray-800">
+                            <button onClick={() => setAboutTab('project')} className={`pb-2 text-sm font-bold uppercase tracking-widest transition-colors ${aboutTab === 'project' ? 'text-hlzPurple border-b-2 border-hlzPurple' : 'text-gray-500 hover:text-gray-300'}`}>{t.aboutTitle}</button>
+                            <button onClick={() => setAboutTab('author')} className={`pb-2 text-sm font-bold uppercase tracking-widest transition-colors ${aboutTab === 'author' ? 'text-hlzPurple border-b-2 border-hlzPurple' : 'text-gray-500 hover:text-gray-300'}`}>{t.authorTitle}</button>
+                        </div>
+                        <div className="space-y-8 flex-1">
+                            {aboutTab === 'project' && (
+                                <div className="fade-in grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white uppercase mb-4 border-l-2 border-hlzPurple pl-3">{t.aboutProjectTitle}</h3>
+                                        <p className="text-sm text-gray-400 leading-relaxed text-justify font-light">{t.aboutProjectDesc}</p>
+                                    </div>
+                                    <div className="bg-black border border-gray-800 relative group flex items-center justify-center p-4 min-h-[200px]">
+                                        <div className="relative z-10 flex flex-col items-center gap-2">
+                                            <Radio size={32} color="#A621FF" />
+                                            <span className="bg-black/80 px-3 py-1 text-[10px] text-hlzPurple border border-hlzPurple/30 tracking-widest uppercase backdrop-blur-sm">RADIAN RESEARCH PROGRAM</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            {aboutTab === 'author' && (
+                                <div className="fade-in grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white uppercase mb-4 border-l-2 border-hlzPurple pl-3">{t.aboutAuthorTitle}</h3>
+                                        <p className="text-sm text-gray-400 leading-relaxed text-justify font-light">{t.aboutAuthorDesc}</p>
+                                    </div>
+                                    <div className="bg-black border border-gray-800 relative group flex items-center justify-center p-4 min-h-[200px]">
+                                        <div className="relative z-10 flex flex-col items-center gap-2">
+                                            <User size={32} color="#A621FF" />
+                                            <span className="bg-black/80 px-3 py-1 text-[10px] text-hlzPurple border border-hlzPurple/30 tracking-widest uppercase backdrop-blur-sm">ARCHITECTE & CHERCHEUSE</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL DE TELA CHEIA (RESTAURADO) */}
+            {fullScreenItem && (
+                <div className="fixed inset-0 z-[3000] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 fade-in" onClick={() => setFullScreenItem(null)}>
+                    <button className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors bg-black/50 p-2 rounded-full"><X size={32} /></button>
+                    {fullScreenItem.type === 'photo' ? (
+                        <img src={fullScreenItem.src} className="max-w-full max-h-full object-contain shadow-[0_0_50px_rgba(166,33,255,0.15)]" onClick={(e) => e.stopPropagation()} />
+                    ) : (
+                        <video src={fullScreenItem.src} controls autoPlay className="max-w-full max-h-full shadow-[0_0_50px_rgba(166,33,255,0.15)]" onClick={(e) => e.stopPropagation()}></video>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default App;

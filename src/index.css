@@ -1,0 +1,75 @@
+@import "leaflet/dist/leaflet.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+@import "leaflet/dist/leaflet.css";
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb { background: #333; }
+::-webkit-scrollbar-thumb:hover { background: #A621FF; }
+
+body { 
+  font-family: 'Share Tech Mono', monospace; 
+  background-color: #000; 
+  color: #e5e5e5; 
+  overflow: hidden;
+}
+
+/* Map Tweaks */
+#map { height: 100vh; width: 100vw; z-index: 0; background-color: #050505; }
+
+/* Custom Marker Container & Animation */
+.custom-marker { background: transparent; border: none; }
+.marker-container {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.marker-core {
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: rotate(45deg); 
+  box-shadow: 0 0 10px rgba(166, 33, 255, 0.8);
+}
+.cone-path { transition: fill 0.3s ease, opacity 0.3s ease, stroke 0.3s ease; }
+
+.marker-container:hover .marker-core {
+  transform: rotate(45deg) scale(1.5);
+  background: #A621FF !important; 
+}
+.marker-container:hover .cone-path {
+  fill: #A621FF !important;
+  opacity: 0.8 !important;
+  stroke: #FFFFFF !important;
+}
+
+/* Glassmorphism Utilities */
+.industrial-panel {
+  background: rgba(10, 10, 10, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid #333;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+}
+
+.industrial-input {
+  background: #000;
+  border: 1px solid #333;
+  color: #fff;
+  font-family: 'Share Tech Mono', monospace;
+}
+.industrial-input::placeholder { color: #555; text-transform: none; }
+.industrial-input:focus { outline: none; border-color: #A621FF; }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.fade-in { animation: fadeIn 0.3s ease-out; }
