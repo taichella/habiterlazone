@@ -1,10 +1,24 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Search, X, Crosshair, Radio, User, Mic, FileText, Lock, Unlock, LogOut, Edit, Trash2, Copy, Tag } from 'lucide-react';
+import { Search, X, Crosshair, Radio, User, Mic, FileText, Lock, Unlock, LogOut, Edit, Trash2, Copy, Tag, ChevronRight } from 'lucide-react';
 import { supabase } from './supabase';
 
 const PALETTE = { purple: '#A621FF', neutralBg: '#0A0A0A' };
+
+// --- HIERARQUIA DE FILTROS E CORES ---
+// Os filhos herdam automaticamente a cor do pai.
+const FILTER_HIERARCHY = {
+    "art": { color: "#FF3366", children: ["intervention urbaine", "performance", "archives visuelles", "paysage sonore"] },
+    "chat": { color: "#33CCFF", children: ["entretiens", "récits", "débats", "informel"] },
+    "films": { color: "#FF9933", children: ["courts-métrages", "images d'archives", "making of"] },
+    "genre": { color: "#CC33FF", children: ["travail féminin", "maternité et lutte", "corps et espace", "masculinités"] },
+    "habitat": { color: "#33FF99", children: ["campements", "convivialité", "précarité", "quotidien"] },
+    "terrain": { color: "#FFFF33", children: ["ruines", "infrastructures", "exploration"] },
+    "territoire / paysage": { color: "#FF33CC", children: ["grands chantiers", "nature vs machine", "frontières", "atmosphère"] },
+    "travail": { color: "#FF3333", children: ["usine", "zones d'exploitation", "grèves", "gestes"] },
+    "vidéos": { color: "#3366FF", children: ["b-roll", "timelapse", "caméra en mouvement"] }
+};
 
 const TRANSLATIONS = {
     fr: {
@@ -14,7 +28,7 @@ const TRANSLATIONS = {
         dateTimeStr: "Date et Heure", save: "Enregistrer", recordedOn: "Enregistré le", coords: "COORD", context: "Contexte & Tags",
         lat: "Latitude", lng: "Longitude",
         types: { text: "Texte", photo: "Photo", video: "Vidéo", audio: "Audio" },
-        selectHint: "Sélectionnez plusieurs tags pour relier les points.", timeline: "Chronologie",
+        selectHint: "Sélectionnez un thème pour explorer les sous-catégories.", timeline: "Chronologie",
         aboutProjectBtn: "À Propos", aboutAuthorBtn: "Misia Forlen", aboutTitle: "À Propos",
         authorTitle: "Misia Forlen", aboutProjectTitle: "Le Projet: Habiter la Zone",
         aboutProjectDesc: "Une exploration de recherche-création documentant les conditions de vie des travailleurs mobiles dans les Zones Économiques Spéciales (ZES) et les grands chantiers industriels. Le projet cartographie les frontières invisibles, les infrastructures logistiques et les habitats précaires, questionnant la notion de 'care' dans la mobilité perpétuelle.",
@@ -31,7 +45,7 @@ const TRANSLATIONS = {
         dateTimeStr: "Date & Time", save: "Save Record", recordedOn: "Recorded on", coords: "COORD", context: "Context & Tags",
         lat: "Latitude", lng: "Longitude",
         types: { text: "Text", photo: "Photo", video: "Video", audio: "Audio" },
-        selectHint: "Select multiple tags to connect points.", timeline: "Timeline",
+        selectHint: "Select a theme to explore subcategories.", timeline: "Timeline",
         aboutProjectBtn: "About", aboutAuthorBtn: "Misia Forlen", aboutTitle: "About",
         authorTitle: "Misia Forlen", aboutProjectTitle: "The Project: Habiter la Zone",
         aboutProjectDesc: "A research-creation exploration documenting the living conditions of mobile workers in Special Economic Zones (SEZ) and large industrial sites. The project maps invisible borders, logistical infrastructures, and precarious habitats, questioning the notion of 'care' in perpetual mobility.",
@@ -80,7 +94,9 @@ const App = () => {
     const [aboutTab, setAboutTab] = useState(null);
     const [mapStyle, setMapStyle] = useState('dark');
     
-    const [activeTags, setActiveTags] = useState([]);
+    // --- NOVOS ESTADOS PARA HIERARQUIA DE FILTROS ---
+    const [activeParentFilter, setActiveParentFilter] = useState(null);
+    const [activeSubFilters, setActiveSubFilters] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     
     const [session, setSession] = useState(null);
@@ -92,10 +108,8 @@ const App = () => {
     const [editingId, setEditingId] = useState(null); 
     const [newMemory, setNewMemory] = useState({ lat: "", lng: "", title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: "" });
     
-    // Estado para a tela cheia restaurado
     const [fullScreenItem, setFullScreenItem] = useState(null);
     
-    // Gerenciador de Tags
     const [showTagManager, setShowTagManager] = useState(false);
     const [newTagName, setNewTagName] = useState("");
     const [newTagColor, setNewTagColor] = useState("#A621FF");
@@ -108,9 +122,18 @@ const App = () => {
     const linesRef = useRef([]);
     const timelineRefs = useRef({});
 
-    const getTagColor = (tagName) => {
-        const tag = dbTags.find(t => t.name.toLowerCase() === tagName.toLowerCase());
-        return tag ? tag.color : '#FFFFFF';
+    // Função inteligente para descobrir a cor da tag (Herdando do pai se for filho)
+    const getDerivedTagColor = (tagName) => {
+        const lowerTag = tagName.toLowerCase();
+        // 1. É um pai principal?
+        if (FILTER_HIERARCHY[lowerTag]) return FILTER_HIERARCHY[lowerTag].color;
+        // 2. É um filho? Se sim, pega a cor do pai.
+        for (const [parent, data] of Object.entries(FILTER_HIERARCHY)) {
+            if (data.children.includes(lowerTag)) return data.color;
+        }
+        // 3. É uma tag personalizada criada no banco de dados?
+        const dbTag = dbTags.find(t => t.name.toLowerCase() === lowerTag);
+        return dbTag ? dbTag.color : '#FFFFFF'; // Branco como fallback
     };
 
     useEffect(() => {
@@ -141,9 +164,7 @@ const App = () => {
         }
     };
 
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-    };
+    const handleLogout = async () => await supabase.auth.signOut();
 
     useEffect(() => {
         if (selectedMemory && timelineRefs.current[selectedMemory.id]) {
@@ -151,11 +172,23 @@ const App = () => {
         }
     }, [selectedMemory]);
 
+    // --- NOVA LÓGICA DE FILTRAGEM ---
     useEffect(() => {
         let result = memories;
-        if (activeTags.length > 0) {
-            result = result.filter(m => m.tags && m.tags.some(tag => activeTags.includes(tag.toLowerCase())));
+        
+        if (activeParentFilter) {
+            const parentData = FILTER_HIERARCHY[activeParentFilter];
+            const validTagsForParent = [activeParentFilter, ...(parentData?.children || [])];
+
+            if (activeSubFilters.length > 0) {
+                // Se o usuário selecionou subfiltros específicos, mostra apenas eles
+                result = result.filter(m => m.tags && m.tags.some(tag => activeSubFilters.includes(tag.toLowerCase())));
+            } else {
+                // Se clicou só no pai, mostra o pai OU qualquer um dos seus filhos
+                result = result.filter(m => m.tags && m.tags.some(tag => validTagsForParent.includes(tag.toLowerCase())));
+            }
         }
+
         if (searchQuery.trim() !== "") {
             const query = searchQuery.toLowerCase();
             result = result.filter(m => 
@@ -165,11 +198,9 @@ const App = () => {
             );
         }
         setFilteredMemories(result);
-    }, [memories, activeTags, searchQuery]);
+    }, [memories, activeParentFilter, activeSubFilters, searchQuery]);
 
-    const timelineMemories = useMemo(() => {
-        return [...filteredMemories].sort((a, b) => new Date(b.date) - new Date(a.date));
-    }, [filteredMemories]);
+    const timelineMemories = useMemo(() => [...filteredMemories].sort((a, b) => new Date(b.date) - new Date(a.date)), [filteredMemories]);
 
     useEffect(() => {
         if (!mapInstanceRef.current && mapRef.current) {
@@ -243,7 +274,7 @@ const App = () => {
             
             let boxShadowString = 'none';
             if (mem.tags && mem.tags.length > 0) {
-               const shadows = mem.tags.map((tag, index) => `0 0 0 ${(index + 1) * 2}px ${getTagColor(tag)}`);
+               const shadows = mem.tags.map((tag, index) => `0 0 0 ${(index + 1) * 2}px ${getDerivedTagColor(tag)}`);
                boxShadowString = shadows.join(', ');
             }
 
@@ -266,7 +297,7 @@ const App = () => {
             markersRef.current[mem.id] = marker;
         });
 
-        if (filteredMemories.length > 1 && (activeTags.length > 0 || searchQuery)) {
+        if (filteredMemories.length > 1 && (activeParentFilter || searchQuery)) {
             for (let i = 0; i < filteredMemories.length; i++) {
                 for (let j = i + 1; j < filteredMemories.length; j++) {
                     const p1 = filteredMemories[i];
@@ -278,7 +309,7 @@ const App = () => {
                 }
             }
         }
-    }, [filteredMemories, selectedMemory, activeTags, searchQuery, mapStyle, dbTags]); 
+    }, [filteredMemories, selectedMemory, activeParentFilter, searchQuery, mapStyle, dbTags]); 
 
     const closeModal = () => {
         setIsAdding(false);
@@ -290,9 +321,8 @@ const App = () => {
         e.stopPropagation(); 
         if (window.confirm(t.deleteConfirm)) {
             const { error } = await supabase.from('markers').delete().eq('id', id);
-            if (error) {
-                alert("Erro ao excluir: " + error.message);
-            } else {
+            if (error) alert("Erro ao excluir: " + error.message);
+            else {
                 setMemories(memories.filter(m => m.id !== id));
                 if (selectedMemory?.id === id) setSelectedMemory(null);
             }
@@ -301,25 +331,14 @@ const App = () => {
 
     const handleEditClick = (mem, e) => {
         e.stopPropagation();
-        setNewMemory({ 
-            ...mem, 
-            datetime: mem.date,
-            tags: mem.tags ? mem.tags.join(', ') : "" 
-        });
+        setNewMemory({ ...mem, datetime: mem.date, tags: mem.tags ? mem.tags.join(', ') : "" });
         setEditingId(mem.id);
         setIsAdding(true);
     };
 
     const handleDuplicateClick = (mem, e) => {
         e.stopPropagation();
-        setNewMemory({ 
-            ...mem, 
-            title: mem.title + " (Copie)",
-            datetime: mem.date,
-            tags: mem.tags ? mem.tags.join(', ') : "",
-            lat: mem.lat + 0.005,
-            lng: mem.lng + 0.005 
-        });
+        setNewMemory({ ...mem, title: mem.title + " (Copie)", datetime: mem.date, tags: mem.tags ? mem.tags.join(', ') : "", lat: mem.lat + 0.005, lng: mem.lng + 0.005 });
         setEditingId(null);
         setIsAdding(true);
     };
@@ -328,48 +347,28 @@ const App = () => {
         if (!newMemory.title || newMemory.lat === "" || newMemory.lng === "" || !newMemory.datetime) return;
         
         const memoryData = {
-            title: newMemory.title,
-            lat: parseFloat(newMemory.lat),
-            lng: parseFloat(newMemory.lng),
-            type: newMemory.type,
-            content: newMemory.content,
-            description: newMemory.description,
+            title: newMemory.title, lat: parseFloat(newMemory.lat), lng: parseFloat(newMemory.lng),
+            type: newMemory.type, content: newMemory.content, description: newMemory.description,
             tags: newMemory.tags.split(',').map(t => t.trim().toLowerCase()).filter(t => t),
-            date: newMemory.datetime,
-            direction: newMemory.direction
+            date: newMemory.datetime, direction: newMemory.direction
         };
 
         if (editingId) {
             const { error } = await supabase.from('markers').update(memoryData).eq('id', editingId);
             if (error) alert("Erro: " + error.message);
-            else {
-                setMemories(memories.map(m => m.id === editingId ? { ...memoryData, id: editingId } : m));
-                closeModal();
-            }
+            else { setMemories(memories.map(m => m.id === editingId ? { ...memoryData, id: editingId } : m)); closeModal(); }
         } else {
             const newId = Date.now();
             const memoryToSave = { ...memoryData, id: newId };
             const { error } = await supabase.from('markers').insert([memoryToSave]);
             if (error) alert("Erro: " + error.message);
-            else {
-                setMemories([...memories, memoryToSave]);
-                closeModal();
-            }
+            else { setMemories([...memories, memoryToSave]); closeModal(); }
         }
     };
 
     // --- GERENCIAMENTO DE TAGS ---
-    const handleEditTagClick = (tag) => {
-        setEditingTagId(tag.id);
-        setNewTagName(tag.name);
-        setNewTagColor(tag.color);
-    };
-
-    const handleCancelTagEdit = () => {
-        setEditingTagId(null);
-        setNewTagName("");
-        setNewTagColor("#A621FF");
-    };
+    const handleEditTagClick = (tag) => { setEditingTagId(tag.id); setNewTagName(tag.name); setNewTagColor(tag.color); };
+    const handleCancelTagEdit = () => { setEditingTagId(null); setNewTagName(""); setNewTagColor("#A621FF"); };
 
     const handleSaveTag = async () => {
         if (!newTagName.trim()) return;
@@ -378,36 +377,45 @@ const App = () => {
         if (editingTagId) {
             const { error } = await supabase.from('tags').update(tagData).eq('id', editingTagId);
             if (error) alert("Erro ao atualizar tag: " + error.message);
-            else {
-                setDbTags(dbTags.map(t => t.id === editingTagId ? { ...t, ...tagData } : t));
-                handleCancelTagEdit();
-            }
+            else { setDbTags(dbTags.map(t => t.id === editingTagId ? { ...t, ...tagData } : t)); handleCancelTagEdit(); }
         } else {
             const { data, error } = await supabase.from('tags').insert([tagData]).select();
             if (error) alert("Erro ao criar tag: " + error.message);
-            else {
-                setDbTags([...dbTags, data[0]]);
-                setNewTagName("");
-            }
+            else { setDbTags([...dbTags, data[0]]); setNewTagName(""); }
         }
     };
 
     const handleDeleteTag = async (id) => {
         if (window.confirm(t.deleteConfirm)) {
             const { error } = await supabase.from('tags').delete().eq('id', id);
-            if (error) alert("Erro ao excluir tag: " + error.message);
-            else setDbTags(dbTags.filter(tag => tag.id !== id));
+            if (!error) setDbTags(dbTags.filter(tag => tag.id !== id));
         }
     };
 
-    const toggleTag = (tag) => setActiveTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+    // Ações de clique nos botões de filtro
+    const toggleParentFilter = (parentTag) => {
+        if (activeParentFilter === parentTag) {
+            setActiveParentFilter(null);
+            setActiveSubFilters([]);
+        } else {
+            setActiveParentFilter(parentTag);
+            setActiveSubFilters([]);
+        }
+    };
 
-    const uniqueTags = useMemo(() => {
-        const tags = new Set();
-        memories.forEach(m => {
-            if (m.tags) m.tags.forEach(t => tags.add(t.toLowerCase()))
-        });
-        return Array.from(tags).sort();
+    const toggleSubFilter = (childTag) => {
+        setActiveSubFilters(prev => prev.includes(childTag) ? prev.filter(t => t !== childTag) : [...prev, childTag]);
+    };
+
+    // Encontra tags customizadas que não estão na hierarquia (para não perdê-las da tela)
+    const customTags = useMemo(() => {
+        const allTags = new Set();
+        memories.forEach(m => { if (m.tags) m.tags.forEach(t => allTags.add(t.toLowerCase())) });
+        const allHierarchyTags = Object.keys(FILTER_HIERARCHY).reduce((acc, key) => {
+            acc.push(key, ...FILTER_HIERARCHY[key].children);
+            return acc;
+        }, []);
+        return Array.from(allTags).filter(t => !allHierarchyTags.includes(t)).sort();
     }, [memories]);
 
     return (
@@ -456,22 +464,63 @@ const App = () => {
                         <div className="absolute left-2 top-2.5 text-gray-500 group-focus-within:text-hlzPurple transition-colors"><Search size={14} /></div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2 mb-2 max-h-[120px] overflow-y-auto">
-                        {uniqueTags.map(tag => {
-                            const color = getTagColor(tag);
-                            const isActive = activeTags.includes(tag);
-                            return (
-                                <button key={tag} onClick={() => toggleTag(tag)} style={{ borderColor: isActive ? color : '#333', color: isActive ? '#000' : color, backgroundColor: isActive ? color : 'transparent' }} className={`text-[10px] px-2 py-0.5 border transition-all uppercase hover:border-white`}>
-                                    #{tag}
-                                </button>
-                            );
-                        })}
+                    {/* --- AREA DOS FILTROS (PAIS E FILHOS) --- */}
+                    <div className="flex flex-col gap-2 mb-2 max-h-[250px] overflow-y-auto overflow-x-hidden pr-2">
+                        <div className="flex flex-wrap gap-2">
+                            {/* Filtros Principais */}
+                            {Object.keys(FILTER_HIERARCHY).map(parentTag => {
+                                const data = FILTER_HIERARCHY[parentTag];
+                                const isActive = activeParentFilter === parentTag;
+                                return (
+                                    <button 
+                                        key={parentTag} 
+                                        onClick={() => toggleParentFilter(parentTag)} 
+                                        style={{ borderColor: isActive ? data.color : '#333', color: isActive ? '#000' : data.color, backgroundColor: isActive ? data.color : 'transparent' }} 
+                                        className={`text-[10px] px-2 py-1 border transition-all uppercase hover:border-white font-bold flex items-center gap-1`}
+                                    >
+                                        #{parentTag}
+                                        {isActive && <ChevronRight size={12} className="rotate-90" />}
+                                    </button>
+                                );
+                            })}
+                            
+                            {/* Tags Customizadas (Soltas, sem pai) */}
+                            {customTags.map(tag => {
+                                const color = getDerivedTagColor(tag);
+                                const isActive = activeParentFilter === tag;
+                                return (
+                                    <button key={tag} onClick={() => toggleParentFilter(tag)} style={{ borderColor: isActive ? color : '#333', color: isActive ? '#000' : color, backgroundColor: isActive ? color : 'transparent' }} className={`text-[10px] px-2 py-1 border transition-all uppercase hover:border-white`}>
+                                        #{tag}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Subfiltros em Cascata */}
+                        {activeParentFilter && FILTER_HIERARCHY[activeParentFilter] && (
+                            <div className="flex flex-wrap gap-2 p-3 mt-1 ml-2 border-l-2 bg-[#050505]" style={{ borderColor: FILTER_HIERARCHY[activeParentFilter].color }}>
+                                {FILTER_HIERARCHY[activeParentFilter].children.map(childTag => {
+                                    const color = FILTER_HIERARCHY[activeParentFilter].color;
+                                    const isActive = activeSubFilters.includes(childTag);
+                                    return (
+                                        <button 
+                                            key={childTag} 
+                                            onClick={() => toggleSubFilter(childTag)} 
+                                            style={{ borderColor: isActive ? color : '#444', color: isActive ? '#000' : color, backgroundColor: isActive ? color : 'transparent' }} 
+                                            className={`text-[9px] px-2 py-0.5 border transition-all uppercase hover:border-white opacity-90`}
+                                        >
+                                            {childTag}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                     
                     <div className="flex justify-between items-center h-4 mb-3">
                         <span className="text-[9px] text-gray-600">{t.selectHint}</span>
-                        {activeTags.length > 0 && (
-                            <button onClick={() => setActiveTags([])} className="text-[10px] text-gray-500 underline decoration-hlzPurple hover:text-white">{t.clear} ({activeTags.length})</button>
+                        {(activeParentFilter || searchQuery) && (
+                            <button onClick={() => { setActiveParentFilter(null); setActiveSubFilters([]); setSearchQuery(""); }} className="text-[10px] text-gray-500 underline decoration-hlzPurple hover:text-white">{t.clear}</button>
                         )}
                     </div>
 
@@ -506,7 +555,7 @@ const App = () => {
                                         </div>
                                         {!isExpanded && (
                                             <div className="flex flex-wrap gap-1">
-                                                {mem.tags && mem.tags.slice(0, 4).map(tag => (<span key={tag} style={{ borderColor: getTagColor(tag), color: getTagColor(tag) }} className="text-[8px] px-1 border uppercase opacity-70">#{tag}</span>))}
+                                                {mem.tags && mem.tags.slice(0, 4).map(tag => (<span key={tag} style={{ borderColor: getDerivedTagColor(tag), color: getDerivedTagColor(tag) }} className="text-[8px] px-1 border uppercase opacity-70">#{tag}</span>))}
                                                 {mem.tags && mem.tags.length > 4 && <span className="text-[8px] text-gray-600">+{mem.tags.length - 4}</span>}
                                             </div>
                                         )}
@@ -515,16 +564,9 @@ const App = () => {
                                     {isExpanded && (
                                         <div className="px-3 pb-3 border-t border-gray-900 bg-black/40 fade-in">
                                             
-                                            {/* BLOCO DE MÍDIA RESTAURADO COM CLIQUE PARA TELA CHEIA */}
                                             <div className="my-3 border border-gray-800 relative flex items-center justify-center overflow-hidden bg-black min-h-[150px]">
                                                 {mem.type === 'photo' && mem.content && (
-                                                    <img 
-                                                        src={mem.content} 
-                                                        alt={mem.title} 
-                                                        onClick={() => setFullScreenItem({ type: 'photo', src: mem.content })} 
-                                                        className="w-full h-auto max-h-[300px] object-contain grayscale hover:grayscale-0 transition-all duration-500 cursor-pointer" 
-                                                        title="Clique pour agrandir"
-                                                    />
+                                                    <img src={mem.content} alt={mem.title} onClick={() => setFullScreenItem({ type: 'photo', src: mem.content })} className="w-full h-auto max-h-[300px] object-contain grayscale hover:grayscale-0 transition-all duration-500 cursor-pointer" title="Clique pour agrandir"/>
                                                 )}
                                                 {mem.type === 'video' && mem.content && (
                                                     <div className="relative w-full cursor-pointer group" onClick={() => setFullScreenItem({ type: 'video', src: mem.content })}>
@@ -543,7 +585,7 @@ const App = () => {
                                             {mem.description && <p className="text-xs text-gray-400 leading-relaxed mb-3 border-l-2 border-hlzPurple pl-3 text-justify">{mem.description}</p>}
 
                                             <div className="flex flex-wrap gap-1.5 mb-3">
-                                                {mem.tags && mem.tags.map(tag => (<span key={tag} style={{color: getTagColor(tag), borderColor: getTagColor(tag)}} className="text-[9px] px-1.5 py-0.5 border border-opacity-40 bg-opacity-10 bg-white uppercase tracking-wider">#{tag}</span>))}
+                                                {mem.tags && mem.tags.map(tag => (<span key={tag} style={{color: getDerivedTagColor(tag), borderColor: getDerivedTagColor(tag)}} className="text-[9px] px-1.5 py-0.5 border border-opacity-40 bg-opacity-10 bg-white uppercase tracking-wider">#{tag}</span>))}
                                             </div>
                                             
                                             <div className="flex items-center justify-between border-t border-gray-900 pt-2 mt-2">
@@ -603,20 +645,8 @@ const App = () => {
                                 {editingTagId ? t.editTag : t.newTag}
                             </h3>
                             <div className="flex gap-2 items-center">
-                                <input 
-                                    type="text" 
-                                    placeholder={t.tagName} 
-                                    className="flex-1 industrial-input p-2 text-sm" 
-                                    value={newTagName} 
-                                    onChange={e => setNewTagName(e.target.value)} 
-                                />
-                                <input 
-                                    type="color" 
-                                    className="w-10 h-10 bg-transparent cursor-pointer border-0 p-0" 
-                                    value={newTagColor} 
-                                    onChange={e => setNewTagColor(e.target.value)} 
-                                    title={t.tagColor}
-                                />
+                                <input type="text" placeholder={t.tagName} className="flex-1 industrial-input p-2 text-sm" value={newTagName} onChange={e => setNewTagName(e.target.value)} />
+                                <input type="color" className="w-10 h-10 bg-transparent cursor-pointer border-0 p-0" value={newTagColor} onChange={e => setNewTagColor(e.target.value)} title={t.tagColor} />
                                 {editingTagId ? (
                                     <div className="flex gap-1">
                                         <button onClick={handleSaveTag} className="bg-hlzPurple text-black font-bold px-3 py-2 uppercase text-[10px] hover:bg-white transition-colors">{t.save}</button>
@@ -749,7 +779,6 @@ const App = () => {
                 </div>
             )}
 
-            {/* MODAL DE TELA CHEIA (RESTAURADO) */}
             {fullScreenItem && (
                 <div className="fixed inset-0 z-[3000] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 fade-in" onClick={() => setFullScreenItem(null)}>
                     <button className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors bg-black/50 p-2 rounded-full"><X size={32} /></button>
