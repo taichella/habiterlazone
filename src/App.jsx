@@ -7,7 +7,6 @@ import { supabase } from './supabase';
 const PALETTE = { purple: '#A621FF', neutralBg: '#0A0A0A' };
 
 // --- HIERARQUIA DE FILTROS E CORES ---
-// Os filhos herdam automaticamente a cor do pai.
 const FILTER_HIERARCHY = {
     "art": { color: "#FF3366", children: ["intervention urbaine", "performance", "archives visuelles", "paysage sonore"] },
     "chat": { color: "#33CCFF", children: ["entretiens", "récits", "débats", "informel"] },
@@ -94,7 +93,6 @@ const App = () => {
     const [aboutTab, setAboutTab] = useState(null);
     const [mapStyle, setMapStyle] = useState('dark');
     
-    // --- NOVOS ESTADOS PARA HIERARQUIA DE FILTROS ---
     const [activeParentFilter, setActiveParentFilter] = useState(null);
     const [activeSubFilters, setActiveSubFilters] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
@@ -122,18 +120,14 @@ const App = () => {
     const linesRef = useRef([]);
     const timelineRefs = useRef({});
 
-    // Função inteligente para descobrir a cor da tag (Herdando do pai se for filho)
     const getDerivedTagColor = (tagName) => {
         const lowerTag = tagName.toLowerCase();
-        // 1. É um pai principal?
         if (FILTER_HIERARCHY[lowerTag]) return FILTER_HIERARCHY[lowerTag].color;
-        // 2. É um filho? Se sim, pega a cor do pai.
         for (const [parent, data] of Object.entries(FILTER_HIERARCHY)) {
             if (data.children.includes(lowerTag)) return data.color;
         }
-        // 3. É uma tag personalizada criada no banco de dados?
         const dbTag = dbTags.find(t => t.name.toLowerCase() === lowerTag);
-        return dbTag ? dbTag.color : '#FFFFFF'; // Branco como fallback
+        return dbTag ? dbTag.color : '#FFFFFF'; 
     };
 
     useEffect(() => {
@@ -172,7 +166,6 @@ const App = () => {
         }
     }, [selectedMemory]);
 
-    // --- NOVA LÓGICA DE FILTRAGEM ---
     useEffect(() => {
         let result = memories;
         
@@ -181,10 +174,8 @@ const App = () => {
             const validTagsForParent = [activeParentFilter, ...(parentData?.children || [])];
 
             if (activeSubFilters.length > 0) {
-                // Se o usuário selecionou subfiltros específicos, mostra apenas eles
                 result = result.filter(m => m.tags && m.tags.some(tag => activeSubFilters.includes(tag.toLowerCase())));
             } else {
-                // Se clicou só no pai, mostra o pai OU qualquer um dos seus filhos
                 result = result.filter(m => m.tags && m.tags.some(tag => validTagsForParent.includes(tag.toLowerCase())));
             }
         }
@@ -366,7 +357,6 @@ const App = () => {
         }
     };
 
-    // --- GERENCIAMENTO DE TAGS ---
     const handleEditTagClick = (tag) => { setEditingTagId(tag.id); setNewTagName(tag.name); setNewTagColor(tag.color); };
     const handleCancelTagEdit = () => { setEditingTagId(null); setNewTagName(""); setNewTagColor("#A621FF"); };
 
@@ -392,7 +382,6 @@ const App = () => {
         }
     };
 
-    // Ações de clique nos botões de filtro
     const toggleParentFilter = (parentTag) => {
         if (activeParentFilter === parentTag) {
             setActiveParentFilter(null);
@@ -407,7 +396,6 @@ const App = () => {
         setActiveSubFilters(prev => prev.includes(childTag) ? prev.filter(t => t !== childTag) : [...prev, childTag]);
     };
 
-    // Encontra tags customizadas que não estão na hierarquia (para não perdê-las da tela)
     const customTags = useMemo(() => {
         const allTags = new Set();
         memories.forEach(m => { if (m.tags) m.tags.forEach(t => allTags.add(t.toLowerCase())) });
@@ -464,10 +452,8 @@ const App = () => {
                         <div className="absolute left-2 top-2.5 text-gray-500 group-focus-within:text-hlzPurple transition-colors"><Search size={14} /></div>
                     </div>
 
-                    {/* --- AREA DOS FILTROS (PAIS E FILHOS) --- */}
                     <div className="flex flex-col gap-2 mb-2 max-h-[250px] overflow-y-auto overflow-x-hidden pr-2">
                         <div className="flex flex-wrap gap-2">
-                            {/* Filtros Principais */}
                             {Object.keys(FILTER_HIERARCHY).map(parentTag => {
                                 const data = FILTER_HIERARCHY[parentTag];
                                 const isActive = activeParentFilter === parentTag;
@@ -484,7 +470,6 @@ const App = () => {
                                 );
                             })}
                             
-                            {/* Tags Customizadas (Soltas, sem pai) */}
                             {customTags.map(tag => {
                                 const color = getDerivedTagColor(tag);
                                 const isActive = activeParentFilter === tag;
@@ -496,7 +481,6 @@ const App = () => {
                             })}
                         </div>
 
-                        {/* Subfiltros em Cascata */}
                         {activeParentFilter && FILTER_HIERARCHY[activeParentFilter] && (
                             <div className="flex flex-wrap gap-2 p-3 mt-1 ml-2 border-l-2 bg-[#050505]" style={{ borderColor: FILTER_HIERARCHY[activeParentFilter].color }}>
                                 {FILTER_HIERARCHY[activeParentFilter].children.map(childTag => {
@@ -724,7 +708,60 @@ const App = () => {
                             </div>
                             <textarea placeholder={t.notes} className="w-full industrial-input p-3 h-24 resize-none" value={newMemory.description} onChange={e => setNewMemory({...newMemory, description: e.target.value})}></textarea>
                             <input type="text" placeholder={t.mediaUrl} className="w-full industrial-input p-3 text-xs" value={newMemory.content} onChange={e => setNewMemory({...newMemory, content: e.target.value})} />
-                            <input type="text" placeholder={t.keywords} className="w-full industrial-input p-3" value={newMemory.tags} onChange={e => setNewMemory({...newMemory, tags: e.target.value})} />
+                            
+                            {/* --- SELETOR VISUAL DE TAGS PARA O ADMIN --- */}
+                            <div className="w-full industrial-input p-3 space-y-3 bg-[#050505]">
+                                <span className="text-[10px] text-gray-500 uppercase tracking-widest block">{t.context} / Tags</span>
+                                <div className="max-h-[150px] overflow-y-auto pr-2 space-y-3">
+                                    {Object.entries(FILTER_HIERARCHY).map(([parent, data]) => (
+                                        <div key={parent} className="border-l-2 pl-2" style={{ borderColor: data.color }}>
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    const currentTags = newMemory.tags ? newMemory.tags.split(',').map(t=>t.trim()).filter(Boolean) : [];
+                                                    const newTags = currentTags.includes(parent) ? currentTags.filter(t=>t!==parent) : [...currentTags, parent];
+                                                    setNewMemory({...newMemory, tags: newTags.join(', ')});
+                                                }}
+                                                className={`text-[10px] px-2 py-0.5 border uppercase font-bold transition-colors mb-1`}
+                                                style={{ 
+                                                    backgroundColor: newMemory.tags?.split(',').map(t=>t.trim()).includes(parent) ? data.color : 'transparent',
+                                                    borderColor: data.color,
+                                                    color: newMemory.tags?.split(',').map(t=>t.trim()).includes(parent) ? '#000' : data.color
+                                                }}
+                                            >
+                                                #{parent}
+                                            </button>
+                                            <div className="flex flex-wrap gap-1 ml-2">
+                                                {data.children.map(child => {
+                                                    const isSelected = newMemory.tags?.split(',').map(t=>t.trim()).includes(child);
+                                                    return (
+                                                    <button 
+                                                        key={child}
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            const currentTags = newMemory.tags ? newMemory.tags.split(',').map(t=>t.trim()).filter(Boolean) : [];
+                                                            if (!currentTags.includes(child) && !currentTags.includes(parent)) currentTags.push(parent);
+                                                            const newTags = currentTags.includes(child) ? currentTags.filter(t=>t!==child) : [...currentTags, child];
+                                                            setNewMemory({...newMemory, tags: newTags.join(', ')});
+                                                        }}
+                                                        className={`text-[9px] px-1.5 py-0.5 border uppercase transition-colors`}
+                                                        style={{ 
+                                                            backgroundColor: isSelected ? data.color : 'transparent',
+                                                            borderColor: isSelected ? data.color : '#333',
+                                                            color: isSelected ? '#000' : '#888'
+                                                        }}
+                                                    >
+                                                        {child}
+                                                    </button>
+                                                )})}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <input type="text" placeholder="Ou digite tags extra (separadas por virgule)..." className="w-full bg-transparent border-t border-gray-800 pt-2 text-xs text-gray-400 focus:outline-none" value={newMemory.tags} onChange={e => setNewMemory({...newMemory, tags: e.target.value})} />
+                            </div>
+                            {/* ------------------------------------------------ */}
+
                             <button onClick={handleSaveMemory} className="w-full bg-hlzPurple hover:bg-white hover:text-black text-black font-bold py-3 uppercase tracking-widest transition-all">{t.save}</button>
                         </div>
                     </div>
