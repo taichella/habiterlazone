@@ -46,7 +46,7 @@ const App = () => {
     const [selectedMemory, setSelectedMemory] = useState(null);
     const [aboutTab, setAboutTab] = useState(null);
     const [mapStyle, setMapStyle] = useState('dark');
-    const [activeParentFilters, setActiveParentFilters] = useState([]); // Array para selecção múltipla
+    
     const [activeSubFilters, setActiveSubFilters] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [session, setSession] = useState(null);
@@ -73,9 +73,13 @@ const App = () => {
     // --- CÉREBRO 100% BANCO DE DADOS (SUPABASE) ---
     const currentHierarchy = useMemo(() => {
         const hierarchy = {};
+        
+        // 1. Cria os pais (Tags que não têm parent_name)
         dbTags.filter(t => !t.parent_name).forEach(tag => {
             hierarchy[tag.name.toLowerCase()] = { color: tag.color || '#FFFFFF', children: [] };
         });
+        
+        // 2. Coloca os filhos dentro dos pais (Tags que têm parent_name)
         dbTags.filter(t => t.parent_name).forEach(tag => {
             const pName = tag.parent_name.toLowerCase();
             if (hierarchy[pName] && !hierarchy[pName].children.includes(tag.name.toLowerCase())) {
@@ -113,7 +117,7 @@ const App = () => {
             if (tData) setDbTags(tData);
         };
         fetchData();
-    }, []);
+    }, []);const [activeParentFilter, setActiveParentFilter] = useState(null);
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -131,16 +135,13 @@ const App = () => {
 
     const filteredMemories = useMemo(() => {
         let result = memories;
-        if (activeParentFilters.length > 0) {
+        if (activeParentFilter) {
+            const parentData = currentHierarchy[activeParentFilter];
+            const validTagsForParent = [activeParentFilter, ...(parentData?.children || [])];
             if (activeSubFilters.length > 0) {
                 result = result.filter(m => m.tags && m.tags.some(tag => activeSubFilters.includes(tag.toLowerCase())));
             } else {
-                let validTags = [];
-                activeParentFilters.forEach(parent => {
-                    validTags.push(parent);
-                    if (currentHierarchy[parent]) validTags.push(...currentHierarchy[parent].children);
-                });
-                result = result.filter(m => m.tags && m.tags.some(tag => validTags.includes(tag.toLowerCase())));
+                result = result.filter(m => m.tags && m.tags.some(tag => validTagsForParent.includes(tag.toLowerCase())));
             }
         }
         if (searchQuery.trim() !== "") {
@@ -148,7 +149,7 @@ const App = () => {
             result = result.filter(m => (m.title && m.title.toLowerCase().includes(query)) || (m.description && m.description.toLowerCase().includes(query)) || (m.tags && m.tags.some(t => t.toLowerCase().includes(query))));
         }
         return result;
-    }, [memories, activeParentFilters, activeSubFilters, searchQuery, currentHierarchy]);
+    }, [memories, activeParentFilter, activeSubFilters, searchQuery, currentHierarchy]);
 
     const timelineMemories = useMemo(() => [...filteredMemories].sort((a, b) => new Date(b.date) - new Date(a.date)), [filteredMemories]);
 
@@ -207,7 +208,7 @@ const App = () => {
             markersRef.current[mem.id] = marker;
         });
 
-        if (filteredMemories.length > 1 && (activeParentFilters.length > 0 || searchQuery)) {
+        if (filteredMemories.length > 1 && (activeParentFilter || searchQuery)) {
             for (let i = 0; i < filteredMemories.length; i++) {
                 for (let j = i + 1; j < filteredMemories.length; j++) {
                     const polyline = L.polyline([[filteredMemories[i].lat, filteredMemories[i].lng], [filteredMemories[j].lat, filteredMemories[j].lng]], { color: PALETTE.purple, weight: 2, opacity: 0.6, dashArray: '5, 5' }).addTo(map);
@@ -215,7 +216,7 @@ const App = () => {
                 }
             }
         }
-    }, [filteredMemories, selectedMemory, activeParentFilters, searchQuery, mapStyle, dbTags, currentHierarchy, getDerivedTagColor]); 
+        }, [filteredMemories, selectedMemory, activeParentFilter, searchQuery, mapStyle, dbTags, currentHierarchy, getDerivedTagColor]);
 
     const closeModal = () => { setIsAdding(false); setEditingId(null); setNewMemory({ lat: "", lng: "", title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: "" }); };
 
@@ -269,17 +270,7 @@ const App = () => {
         }
     };
 
-    const toggleParentFilter = (parentTag) => {
-        setActiveParentFilters(prev => {
-            if (prev.includes(parentTag)) {
-                const childrenToRemove = currentHierarchy[parentTag]?.children || [];
-                setActiveSubFilters(subs => subs.filter(s => !childrenToRemove.includes(s)));
-                return prev.filter(t => t !== parentTag);
-            } else {
-                return [...prev, parentTag];
-            }
-        });
-    };
+    const toggleParentFilter = (parentTag) => { setActiveParentFilter(activeParentFilter === parentTag ? null : parentTag); setActiveSubFilters([]); };
     const toggleSubFilter = (childTag) => setActiveSubFilters(prev => prev.includes(childTag) ? prev.filter(t => t !== childTag) : [...prev, childTag]);
 
     return (
@@ -322,7 +313,7 @@ const App = () => {
                         <div className="flex flex-wrap gap-2">
                             {Object.keys(currentHierarchy).map(parentTag => {
                                 const data = currentHierarchy[parentTag];
-                                const isActive = activeParentFilters.includes(parentTag);
+                                const isActive = activeParentFilter === parentTag;
                                 return (
                                     <button key={parentTag} onClick={() => toggleParentFilter(parentTag)} style={{ borderColor: isActive ? data.color : '#333', color: isActive ? '#000' : data.color, backgroundColor: isActive ? data.color : 'transparent' }} className={`text-[10px] px-2 py-1 border transition-all uppercase hover:border-white font-bold flex items-center gap-1`}>
                                         #{parentTag} {isActive && data.children.length > 0 && <ChevronRight size={12} className="rotate-90" />}
@@ -330,29 +321,24 @@ const App = () => {
                                 );
                             })}
                         </div>
-                        {activeParentFilters.map(parentTag => {
-                            if (currentHierarchy[parentTag]?.children.length > 0) {
-                                return (
-                                    <div key={`sub-${parentTag}`} className="flex flex-wrap gap-2 p-3 mt-1 ml-2 border-l-2 bg-[#050505]" style={{ borderColor: currentHierarchy[parentTag].color }}>
-                                        {currentHierarchy[parentTag].children.map(childTag => {
-                                            const color = currentHierarchy[parentTag].color;
-                                            const isActive = activeSubFilters.includes(childTag);
-                                            return (
-                                                <button key={childTag} onClick={() => toggleSubFilter(childTag)} style={{ borderColor: isActive ? color : '#444', color: isActive ? '#000' : color, backgroundColor: isActive ? color : 'transparent' }} className={`text-[9px] px-2 py-0.5 border transition-all uppercase hover:border-white opacity-90`}>
-                                                    {childTag}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                );
-                            }
-                            return null;
-                        })}
+                        {activeParentFilter && currentHierarchy[activeParentFilter]?.children.length > 0 && (
+                            <div className="flex flex-wrap gap-2 p-3 mt-1 ml-2 border-l-2 bg-[#050505]" style={{ borderColor: currentHierarchy[activeParentFilter].color }}>
+                                {currentHierarchy[activeParentFilter].children.map(childTag => {
+                                    const color = currentHierarchy[activeParentFilter].color;
+                                    const isActive = activeSubFilters.includes(childTag);
+                                    return (
+                                        <button key={childTag} onClick={() => toggleSubFilter(childTag)} style={{ borderColor: isActive ? color : '#444', color: isActive ? '#000' : color, backgroundColor: isActive ? color : 'transparent' }} className={`text-[9px] px-2 py-0.5 border transition-all uppercase hover:border-white opacity-90`}>
+                                            {childTag}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                     
                     <div className="flex justify-between items-center h-4 mb-3">
                         <span className="text-[9px] text-gray-600">{t.selectHint}</span>
-                        {(activeParentFilters.length > 0 || searchQuery) && <button onClick={() => { setActiveParentFilters([]); setActiveSubFilters([]); setSearchQuery(""); }} className="text-[10px] text-gray-500 underline">{t.clear}</button>}
+                        {(activeParentFilter || searchQuery) && <button onClick={() => { setActiveParentFilter(null); setActiveSubFilters([]); setSearchQuery(""); }} className="text-[10px] text-gray-500 underline">{t.clear}</button>}
                     </div>
 
                     <div className="flex justify-between items-center pt-3 border-t border-gray-800">
@@ -420,6 +406,7 @@ const App = () => {
                 </div>
             </div>
 
+            {/* GERENCIAMENTO DE TAGS ADMIN 100% SUPABASE */}
             {showTagManager && session && (
                 <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                     <div className="industrial-panel p-6 w-full max-w-md shadow-[0_0_50px_rgba(166,33,255,0.2)] border-hlzPurple fade-in">
@@ -429,10 +416,12 @@ const App = () => {
                         </div>
                         
                         <div className="max-h-[40vh] overflow-y-auto mb-6 space-y-2 pr-2">
+                            {/* Renderiza Pais e depois os Filhos */}
                             {allParentOptions.map(parentName => {
                                 const parentData = currentHierarchy[parentName];
                                 const parentDbTag = dbTags.find(t => t.name.toLowerCase() === parentName && !t.parent_name);
                                 
+                                // Se a tag pai não existe no banco (algo estranho), ignoramos
                                 if (!parentDbTag) return null;
 
                                 return (
@@ -447,6 +436,7 @@ const App = () => {
                                             <button onClick={() => handleDeleteTag(parentDbTag.id)} className="text-gray-500 hover:text-red-500"><Trash2 size={14}/></button>
                                         </div>
                                     </div>
+                                    {/* Renderiza Filhos daquele Pai */}
                                     {dbTags.filter(child => child.parent_name?.toLowerCase() === parentName).map(child => (
                                         <div key={child.id} className="flex justify-between items-center bg-[#050505] p-2 ml-6 border-l-2 border-gray-500">
                                             <span className="text-sm uppercase text-gray-400">↳ {child.name}</span>
@@ -469,8 +459,9 @@ const App = () => {
                                     {newTagParentName === "" && <input type="color" className="w-10 h-10 bg-transparent cursor-pointer border-0 p-0" value={newTagColor} onChange={e => setNewTagColor(e.target.value)} />}
                                 </div>
                                 <div className="flex gap-2 items-center">
+                                    {/* TEXTO LIMPO: Sem "Subtag de:" */}
                                     <select className="flex-1 industrial-input p-2 text-xs text-gray-400" value={newTagParentName} onChange={(e) => setNewTagParentName(e.target.value)}>
-                                        <option value="">[ Nova Categoria Principal ]</option>
+                                        <option value="">[ Nouvelle catégorie ]</option>
                                         {allParentOptions.map(parent => (
                                             <option key={`opt-${parent}`} value={parent}>#{parent}</option>
                                         ))}
@@ -557,7 +548,6 @@ const App = () => {
                     </div>
                 </div>
             )}
-
             {/* MODAL ABOUT (À PROPOS) - Restaurado */}
             {aboutTab && (
                 <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
