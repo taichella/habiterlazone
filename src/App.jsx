@@ -6,6 +6,19 @@ import { supabase } from './supabase';
 
 const PALETTE = { purple: '#A621FF', neutralBg: '#0A0A0A' };
 
+// --- OS SEUS FILTROS VOLTARAM (INTACTOS E FIXOS) ---
+const BASE_HIERARCHY = {
+    "art": { color: "#FF3366", children: ["intervention urbaine", "performance", "archives visuelles", "paysage sonore"] },
+    "chat": { color: "#33CCFF", children: ["entretiens", "récits", "débats", "informel"] },
+    "films": { color: "#FF9933", children: ["courts-métrages", "images d'archives", "making of"] },
+    "genre": { color: "#CC33FF", children: ["travail féminin", "maternité et lutte", "corps et espace", "masculinités"] },
+    "habitat": { color: "#33FF99", children: ["campements", "convivialité", "précarité", "quotidien"] },
+    "terrain": { color: "#FFFF33", children: ["ruines", "infrastructures", "exploration"] },
+    "territoire / paysage": { color: "#FF33CC", children: ["grands chantiers", "nature vs machine", "frontières", "atmosphère"] },
+    "travail": { color: "#FF3333", children: ["usine", "zones d'exploitation", "grèves", "gestes"] },
+    "vidéos": { color: "#3366FF", children: ["b-roll", "timelapse", "caméra en mouvement"] }
+};
+
 const TRANSLATIONS = {
     fr: {
         subtitle: "Journal de terrain(s)", searchPlaceholder: "Rechercher (lieu, tag)...",
@@ -47,25 +60,15 @@ const formatDateTime = (datetimeStr, lang) => {
     if (!datetimeStr) return "";
     const d = new Date(datetimeStr);
     if (isNaN(d.getTime())) return datetimeStr;
-    
     if (lang === 'fr') {
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
-        const year = d.getFullYear();
-        const hours = String(d.getHours()).padStart(2, '0');
-        const minutes = String(d.getMinutes()).padStart(2, '0');
-        return `${day}-${month}-${year} à ${hours}:${minutes}`;
+        return `${day}-${month}-${d.getFullYear()} à ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     } else {
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
         let hours = d.getHours();
-        const minutes = String(d.getMinutes()).padStart(2, '0');
         const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12;
-        hours = hours ? hours : 12;
-        const strHours = String(hours).padStart(2, '0');
-        return `${year}-${month}-${day} at ${strHours}:${minutes} ${ampm}`;
+        hours = hours % 12 || 12;
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} at ${String(hours).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${ampm}`;
     }
 };
 
@@ -97,7 +100,7 @@ const App = () => {
     const [showTagManager, setShowTagManager] = useState(false);
     const [newTagName, setNewTagName] = useState("");
     const [newTagColor, setNewTagColor] = useState("#A621FF");
-    const [newTagParentId, setNewTagParentId] = useState(""); // NOVO ESTADO: Guarda quem é o pai da tag que está sendo criada
+    const [newTagParentName, setNewTagParentName] = useState(""); // Novo estado (Texto simples)
     const [editingTagId, setEditingTagId] = useState(null);
 
     const mapRef = useRef(null);
@@ -107,44 +110,30 @@ const App = () => {
     const linesRef = useRef([]);
     const timelineRefs = useRef({});
 
-    // --- CÉREBRO DINÂMICO DA HIERARQUIA ---
-    // Transforma a lista plana do banco de dados em uma árvore organizada de pais e filhos
-    const dynamicHierarchy = useMemo(() => {
-        const hierarchy = {};
+    // --- CÉREBRO QUE JUNTA O FIXO COM O DINÂMICO ---
+    const currentHierarchy = useMemo(() => {
+        // Copia a base original
+        const merged = JSON.parse(JSON.stringify(BASE_HIERARCHY));
         
-        // 1. Encontra todos os "Pais" (Tags onde parent_id é null ou vazio)
-        dbTags.filter(tag => !tag.parent_id).forEach(parent => {
-            hierarchy[parent.name.toLowerCase()] = {
-                id: parent.id,
-                color: parent.color,
-                children: []
-            };
-        });
-
-        // 2. Encontra todos os "Filhos" e aloca dentro dos respectivos pais
-        dbTags.filter(tag => tag.parent_id).forEach(child => {
-            const parent = dbTags.find(p => p.id === child.parent_id);
-            if (parent && hierarchy[parent.name.toLowerCase()]) {
-                hierarchy[parent.name.toLowerCase()].children.push(child.name.toLowerCase());
+        // Pega as tags do Supabase e injeta nas categorias pai
+        dbTags.forEach(tag => {
+            const parentKey = tag.parent_name?.toLowerCase();
+            if (parentKey && merged[parentKey]) {
+                const childName = tag.name.toLowerCase();
+                if (!merged[parentKey].children.includes(childName)) {
+                    merged[parentKey].children.push(childName);
+                }
             }
         });
-
-        return hierarchy;
+        return merged;
     }, [dbTags]);
 
-    // Busca a cor inteligente (Herdando do pai se for subcategoria)
     const getDerivedTagColor = (tagName) => {
         const lowerTag = tagName.toLowerCase();
-        
-        // É um pai principal?
-        if (dynamicHierarchy[lowerTag]) return dynamicHierarchy[lowerTag].color;
-        
-        // É um filho? Procura qual é o pai dele e pega a cor
-        for (const [parentName, data] of Object.entries(dynamicHierarchy)) {
+        if (currentHierarchy[lowerTag]) return currentHierarchy[lowerTag].color;
+        for (const [parentName, data] of Object.entries(currentHierarchy)) {
             if (data.children.includes(lowerTag)) return data.color;
         }
-        
-        // É uma tag avulsa sem pai? Busca direto do banco de dados
         const dbTag = dbTags.find(t => t.name.toLowerCase() === lowerTag);
         return dbTag ? dbTag.color : '#FFFFFF'; 
     };
@@ -159,9 +148,8 @@ const App = () => {
         const fetchData = async () => {
             const { data: mData } = await supabase.from('markers').select('*');
             if (mData) setMemories(mData);
-
-            // Fetch tags, garantindo que a nova coluna parent_id venha junto
-            const { data: tData } = await supabase.from('tags').select('id, name, color, parent_id');
+            // Puxa as tags com a nova coluna parent_name
+            const { data: tData } = await supabase.from('tags').select('id, name, color, parent_name');
             if (tData) setDbTags(tData);
         };
         fetchData();
@@ -171,11 +159,7 @@ const App = () => {
         e.preventDefault();
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) alert("Erro: " + error.message);
-        else {
-            setShowLogin(false);
-            setEmail('');
-            setPassword('');
-        }
+        else { setShowLogin(false); setEmail(''); setPassword(''); }
     };
 
     const handleLogout = async () => await supabase.auth.signOut();
@@ -186,20 +170,18 @@ const App = () => {
         }
     }, [selectedMemory]);
 
+    // O Filtro recalculado com useMemo (corrigindo o erro do ESLint)
     const filteredMemories = useMemo(() => {
         let result = memories;
-        
         if (activeParentFilter) {
-            const parentData = dynamicHierarchy[activeParentFilter];
+            const parentData = currentHierarchy[activeParentFilter];
             const validTagsForParent = [activeParentFilter, ...(parentData?.children || [])];
-
             if (activeSubFilters.length > 0) {
                 result = result.filter(m => m.tags && m.tags.some(tag => activeSubFilters.includes(tag.toLowerCase())));
             } else {
                 result = result.filter(m => m.tags && m.tags.some(tag => validTagsForParent.includes(tag.toLowerCase())));
             }
         }
-
         if (searchQuery.trim() !== "") {
             const query = searchQuery.toLowerCase();
             result = result.filter(m => 
@@ -209,7 +191,7 @@ const App = () => {
             );
         }
         return result;
-    }, [memories, activeParentFilter, activeSubFilters, searchQuery, dynamicHierarchy]);
+    }, [memories, activeParentFilter, activeSubFilters, searchQuery, currentHierarchy]);
 
     const timelineMemories = useMemo(() => [...filteredMemories].sort((a, b) => new Date(b.date) - new Date(a.date)), [filteredMemories]);
 
@@ -219,7 +201,6 @@ const App = () => {
             const initialLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(map);
             tileLayerRef.current = initialLayer;
             L.control.zoom({ position: 'bottomright' }).addTo(map);
-
             setTimeout(() => map.invalidateSize(), 250);
 
             map.on('click', (e) => {
@@ -227,10 +208,8 @@ const App = () => {
                     if (session && !showTagManager) { 
                         const now = new Date();
                         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-                        const localDatetime = now.toISOString().slice(0, 16);
-                        
                         setEditingId(null); 
-                        setNewMemory({ lat: e.latlng.lat, lng: e.latlng.lng, title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: localDatetime });
+                        setNewMemory({ lat: e.latlng.lat, lng: e.latlng.lng, title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: now.toISOString().slice(0, 16) });
                         setIsAdding(true);
                         setSelectedMemory(null);
                         setAboutTab(null);
@@ -239,12 +218,8 @@ const App = () => {
             });
             mapInstanceRef.current = map;
         }
-
         return () => {
-            if (mapInstanceRef.current) {
-                mapInstanceRef.current.remove();
-                mapInstanceRef.current = null;
-            }
+            if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null; }
         };
     }, [showTagManager]);
 
@@ -254,17 +229,13 @@ const App = () => {
         let url = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
         if (mapStyle === 'light') url = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
         else if (mapStyle === 'satellite') url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-
         tileLayerRef.current = L.tileLayer(url, { subdomains: 'abcd', maxZoom: 20 }).addTo(mapInstanceRef.current);
     }, [mapStyle]);
 
     const handleSelectMemory = (mem) => {
-        setSelectedMemory(mem);
-        setAboutTab(null);
-        setIsAdding(false);
+        setSelectedMemory(mem); setAboutTab(null); setIsAdding(false);
         if (mapInstanceRef.current) {
-            const currentZoom = mapInstanceRef.current.getZoom();
-            mapInstanceRef.current.setView([mem.lat, mem.lng], currentZoom, { animate: true, duration: 1.2 });
+            mapInstanceRef.current.setView([mem.lat, mem.lng], mapInstanceRef.current.getZoom(), { animate: true, duration: 1.2 });
         }
     };
 
@@ -281,50 +252,40 @@ const App = () => {
             const coreColor = mapStyle === 'light' ? '#0A0A0A' : '#ffffff';
             const coneColor = mapStyle === 'light' ? 'rgba(166, 33, 255, 0.4)' : 'rgba(166, 33, 255, 0.65)';
             const strokeColor = mapStyle === 'light' ? '#7C3AED' : '#D8B4FE';
-            const rot = mem.direction || 0;
-            
             let boxShadowString = 'none';
             if (mem.tags && mem.tags.length > 0) {
-               const shadows = mem.tags.map((tag, index) => `0 0 0 ${(index + 1) * 2}px ${getDerivedTagColor(tag)}`);
-               boxShadowString = shadows.join(', ');
+               boxShadowString = mem.tags.map((tag, i) => `0 0 0 ${(i + 1) * 2}px ${getDerivedTagColor(tag)}`).join(', ');
             }
 
             const iconHtml = `
                 <div class="marker-container">
-                    <svg width="48" height="48" viewBox="0 0 48 48" style="position: absolute; top: 0; left: 0; transform: rotate(${rot}deg); transform-origin: center; pointer-events: none; overflow: visible;">
+                    <svg width="48" height="48" viewBox="0 0 48 48" style="position: absolute; top: 0; left: 0; transform: rotate(${mem.direction || 0}deg); transform-origin: center; pointer-events: none; overflow: visible;">
                         <path d="M24,24 L6,4 A26,26 0 0,1 42,4 Z" class="cone-path" fill="${coneColor}" stroke="${strokeColor}" stroke-width="1.5" />
                     </svg>
                     <div class="marker-core" style="box-shadow: ${boxShadowString}; background-color: ${coreColor};"></div>
                 </div>
             `;
-            
             const icon = L.divIcon({ className: 'custom-marker', html: iconHtml, iconSize: [48, 48], iconAnchor: [24, 24] });
             const marker = L.marker([mem.lat, mem.lng], { icon })
                 .addTo(map)
-                .on('click', (e) => {
-                    L.DomEvent.stopPropagation(e);
-                    handleSelectMemory(mem);
-                });
+                .on('click', (e) => { L.DomEvent.stopPropagation(e); handleSelectMemory(mem); });
             markersRef.current[mem.id] = marker;
         });
 
         if (filteredMemories.length > 1 && (activeParentFilter || searchQuery)) {
             for (let i = 0; i < filteredMemories.length; i++) {
                 for (let j = i + 1; j < filteredMemories.length; j++) {
-                    const p1 = filteredMemories[i];
-                    const p2 = filteredMemories[j];
-                    const polyline = L.polyline([[p1.lat, p1.lng], [p2.lat, p2.lng]], 
+                    const polyline = L.polyline([[filteredMemories[i].lat, filteredMemories[i].lng], [filteredMemories[j].lat, filteredMemories[j].lng]], 
                         { color: PALETTE.purple, weight: 2, opacity: 0.6, dashArray: '5, 5' }
                     ).addTo(map);
                     linesRef.current.push(polyline);
                 }
             }
         }
-    }, [filteredMemories, selectedMemory, activeParentFilter, searchQuery, mapStyle, dbTags, dynamicHierarchy]); 
+    }, [filteredMemories, selectedMemory, activeParentFilter, searchQuery, mapStyle, dbTags, currentHierarchy]); 
 
     const closeModal = () => {
-        setIsAdding(false);
-        setEditingId(null);
+        setIsAdding(false); setEditingId(null);
         setNewMemory({ lat: "", lng: "", title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: "" });
     };
 
@@ -332,95 +293,66 @@ const App = () => {
         e.stopPropagation(); 
         if (window.confirm(t.deleteConfirm)) {
             const { error } = await supabase.from('markers').delete().eq('id', id);
-            if (error) alert("Erro ao excluir: " + error.message);
-            else {
-                setMemories(memories.filter(m => m.id !== id));
-                if (selectedMemory?.id === id) setSelectedMemory(null);
-            }
+            if (!error) { setMemories(memories.filter(m => m.id !== id)); if (selectedMemory?.id === id) setSelectedMemory(null); }
         }
     };
 
     const handleEditClick = (mem, e) => {
         e.stopPropagation();
         setNewMemory({ ...mem, datetime: mem.date, tags: mem.tags ? mem.tags.join(', ') : "" });
-        setEditingId(mem.id);
-        setIsAdding(true);
+        setEditingId(mem.id); setIsAdding(true);
     };
 
     const handleDuplicateClick = (mem, e) => {
         e.stopPropagation();
         setNewMemory({ ...mem, title: mem.title + " (Copie)", datetime: mem.date, tags: mem.tags ? mem.tags.join(', ') : "", lat: mem.lat + 0.005, lng: mem.lng + 0.005 });
-        setEditingId(null);
-        setIsAdding(true);
+        setEditingId(null); setIsAdding(true);
     };
 
     const handleSaveMemory = async () => {
         if (!newMemory.title || newMemory.lat === "" || newMemory.lng === "" || !newMemory.datetime) return;
-        
         const memoryData = {
             title: newMemory.title, lat: parseFloat(newMemory.lat), lng: parseFloat(newMemory.lng),
             type: newMemory.type, content: newMemory.content, description: newMemory.description,
-            tags: newMemory.tags.split(',').map(t => t.trim().toLowerCase()).filter(t => t),
+            tags: newMemory.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean),
             date: newMemory.datetime, direction: newMemory.direction
         };
 
         if (editingId) {
             const { error } = await supabase.from('markers').update(memoryData).eq('id', editingId);
-            if (error) alert("Erro: " + error.message);
-            else { setMemories(memories.map(m => m.id === editingId ? { ...memoryData, id: editingId } : m)); closeModal(); }
+            if (!error) { setMemories(memories.map(m => m.id === editingId ? { ...memoryData, id: editingId } : m)); closeModal(); }
         } else {
-            const newId = Date.now();
-            const memoryToSave = { ...memoryData, id: newId };
+            const memoryToSave = { ...memoryData, id: Date.now() };
             const { error } = await supabase.from('markers').insert([memoryToSave]);
-            if (error) alert("Erro: " + error.message);
-            else { setMemories([...memories, memoryToSave]); closeModal(); }
+            if (!error) { setMemories([...memories, memoryToSave]); closeModal(); }
         }
     };
 
+    // --- GERENCIAMENTO DE TAGS REVISADO ---
     const handleEditTagClick = (tag) => { 
-        setEditingTagId(tag.id); 
-        setNewTagName(tag.name); 
-        setNewTagColor(tag.color); 
-        setNewTagParentId(tag.parent_id || ""); // Carrega o pai, se houver
+        setEditingTagId(tag.id); setNewTagName(tag.name); setNewTagColor(tag.color); 
+        setNewTagParentName(tag.parent_name || ""); 
     };
     
     const handleCancelTagEdit = () => { 
-        setEditingTagId(null); 
-        setNewTagName(""); 
-        setNewTagColor("#A621FF"); 
-        setNewTagParentId(""); // Reseta o pai
+        setEditingTagId(null); setNewTagName(""); setNewTagColor("#A621FF"); setNewTagParentName(""); 
     };
 
-const handleSaveTag = async () => {
+    const handleSaveTag = async () => {
         if (!newTagName.trim()) return;
-        
-        // Conversão à prova de balas: Se o Supabase usar números, converte de String para Número
-        let formattedParentId = newTagParentId === "" ? null : newTagParentId;
-        if (formattedParentId !== null && !isNaN(formattedParentId)) {
-            formattedParentId = Number(formattedParentId);
-        }
         
         const tagData = { 
             name: newTagName.trim().toLowerCase(), 
             color: newTagColor,
-            parent_id: formattedParentId
+            parent_name: newTagParentName === "" ? null : newTagParentName.toLowerCase() // Simplesmente salva o nome do pai!
         };
         
         if (editingTagId) {
             const { error } = await supabase.from('tags').update(tagData).eq('id', editingTagId);
-            if (error) alert("Erro ao atualizar tag: " + error.message);
-            else { 
-                setDbTags(dbTags.map(t => t.id === editingTagId ? { ...t, ...tagData } : t)); 
-                handleCancelTagEdit(); 
-            }
+            if (!error) { setDbTags(dbTags.map(t => t.id === editingTagId ? { ...t, ...tagData } : t)); handleCancelTagEdit(); }
         } else {
             const { data, error } = await supabase.from('tags').insert([tagData]).select();
-            if (error) alert("Erro ao criar tag: " + error.message);
-            else { 
-                setDbTags([...dbTags, data[0]]); 
-                setNewTagName(""); 
-                setNewTagParentId("");
-            }
+            if (!error) { setDbTags([...dbTags, data[0]]); setNewTagName(""); setNewTagParentName(""); }
         }
     };
 
@@ -432,36 +364,26 @@ const handleSaveTag = async () => {
     };
 
     const toggleParentFilter = (parentTag) => {
-        if (activeParentFilter === parentTag) {
-            setActiveParentFilter(null);
-            setActiveSubFilters([]);
-        } else {
-            setActiveParentFilter(parentTag);
-            setActiveSubFilters([]);
-        }
+        setActiveParentFilter(activeParentFilter === parentTag ? null : parentTag);
+        setActiveSubFilters([]);
     };
 
-    const toggleSubFilter = (childTag) => {
-        setActiveSubFilters(prev => prev.includes(childTag) ? prev.filter(t => t !== childTag) : [...prev, childTag]);
-    };
+    const toggleSubFilter = (childTag) => setActiveSubFilters(prev => prev.includes(childTag) ? prev.filter(t => t !== childTag) : [...prev, childTag]);
 
     const customTags = useMemo(() => {
         const allTags = new Set();
         memories.forEach(m => { if (m.tags) m.tags.forEach(t => allTags.add(t.toLowerCase())) });
-        
-        // Pega todos os nomes que estão na hierarquia dinâmica
-        const allHierarchyTags = Object.keys(dynamicHierarchy).reduce((acc, key) => {
-            acc.push(key, ...dynamicHierarchy[key].children);
-            return acc;
+        const allHierarchyTags = Object.keys(currentHierarchy).reduce((acc, key) => {
+            acc.push(key, ...currentHierarchy[key].children); return acc;
         }, []);
-        
         return Array.from(allTags).filter(t => !allHierarchyTags.includes(t)).sort();
-    }, [memories, dynamicHierarchy]);
+    }, [memories, currentHierarchy]);
 
     return (
         <div className="relative w-full h-screen font-mono text-gray-200">
             <div ref={mapRef} id="map" className="h-full w-full"></div>
 
+            {/* PAINEL ESQUERDO */}
             <div className="absolute top-0 left-0 w-full md:w-[380px] p-4 z-[1000] pointer-events-none flex flex-col gap-4">
                 <div className="industrial-panel p-5 border-l-4 border-l-hlzPurple pointer-events-auto shrink-0 flex flex-col max-h-[90vh] overflow-y-auto">
                     <div className="flex justify-between items-center mb-3">
@@ -489,11 +411,7 @@ const handleSaveTag = async () => {
                         <div>
                             <h1 className="text-4xl font-bold text-white tracking-tighter leading-none flex items-center gap-3">
                                 <span className="block">Habiter<br />la Zone</span>
-                                {session ? (
-                                    <span className="text-[10px] text-green-400 border border-green-400 px-1 bg-green-400/10 tracking-normal font-normal self-center translate-y-[-2px] flex items-center gap-1"><Unlock size={10}/> ADMIN</span>
-                                ) : (
-                                    <span className="text-[10px] text-hlzPurple border border-hlzPurple px-1 bg-hlzPurple/10 tracking-normal font-normal self-center translate-y-[-2px]">SYS.ONLINE</span>
-                                )}
+                                {session ? <span className="text-[10px] text-green-400 border border-green-400 px-1 bg-green-400/10 tracking-normal font-normal self-center translate-y-[-2px] flex items-center gap-1"><Unlock size={10}/> ADMIN</span> : <span className="text-[10px] text-hlzPurple border border-hlzPurple px-1 bg-hlzPurple/10 tracking-normal font-normal self-center translate-y-[-2px]">SYS.ONLINE</span>}
                             </h1>
                             <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">{t.subtitle}</p>
                         </div>
@@ -504,20 +422,15 @@ const handleSaveTag = async () => {
                         <div className="absolute left-2 top-2.5 text-gray-500 group-focus-within:text-hlzPurple transition-colors"><Search size={14} /></div>
                     </div>
 
+                    {/* FILTROS E SUBFILTROS */}
                     <div className="flex flex-col gap-2 mb-2 max-h-[250px] overflow-y-auto overflow-x-hidden pr-2">
                         <div className="flex flex-wrap gap-2">
-                            {Object.keys(dynamicHierarchy).map(parentTag => {
-                                const data = dynamicHierarchy[parentTag];
+                            {Object.keys(currentHierarchy).map(parentTag => {
+                                const data = currentHierarchy[parentTag];
                                 const isActive = activeParentFilter === parentTag;
                                 return (
-                                    <button 
-                                        key={parentTag} 
-                                        onClick={() => toggleParentFilter(parentTag)} 
-                                        style={{ borderColor: isActive ? data.color : '#333', color: isActive ? '#000' : data.color, backgroundColor: isActive ? data.color : 'transparent' }} 
-                                        className={`text-[10px] px-2 py-1 border transition-all uppercase hover:border-white font-bold flex items-center gap-1`}
-                                    >
-                                        #{parentTag}
-                                        {isActive && data.children.length > 0 && <ChevronRight size={12} className="rotate-90" />}
+                                    <button key={parentTag} onClick={() => toggleParentFilter(parentTag)} style={{ borderColor: isActive ? data.color : '#333', color: isActive ? '#000' : data.color, backgroundColor: isActive ? data.color : 'transparent' }} className={`text-[10px] px-2 py-1 border transition-all uppercase hover:border-white font-bold flex items-center gap-1`}>
+                                        #{parentTag} {isActive && data.children.length > 0 && <ChevronRight size={12} className="rotate-90" />}
                                     </button>
                                 );
                             })}
@@ -533,18 +446,13 @@ const handleSaveTag = async () => {
                             })}
                         </div>
 
-                        {activeParentFilter && dynamicHierarchy[activeParentFilter]?.children.length > 0 && (
-                            <div className="flex flex-wrap gap-2 p-3 mt-1 ml-2 border-l-2 bg-[#050505]" style={{ borderColor: dynamicHierarchy[activeParentFilter].color }}>
-                                {dynamicHierarchy[activeParentFilter].children.map(childTag => {
-                                    const color = dynamicHierarchy[activeParentFilter].color;
+                        {activeParentFilter && currentHierarchy[activeParentFilter]?.children.length > 0 && (
+                            <div className="flex flex-wrap gap-2 p-3 mt-1 ml-2 border-l-2 bg-[#050505]" style={{ borderColor: currentHierarchy[activeParentFilter].color }}>
+                                {currentHierarchy[activeParentFilter].children.map(childTag => {
+                                    const color = currentHierarchy[activeParentFilter].color;
                                     const isActive = activeSubFilters.includes(childTag);
                                     return (
-                                        <button 
-                                            key={childTag} 
-                                            onClick={() => toggleSubFilter(childTag)} 
-                                            style={{ borderColor: isActive ? color : '#444', color: isActive ? '#000' : color, backgroundColor: isActive ? color : 'transparent' }} 
-                                            className={`text-[9px] px-2 py-0.5 border transition-all uppercase hover:border-white opacity-90`}
-                                        >
+                                        <button key={childTag} onClick={() => toggleSubFilter(childTag)} style={{ borderColor: isActive ? color : '#444', color: isActive ? '#000' : color, backgroundColor: isActive ? color : 'transparent' }} className={`text-[9px] px-2 py-0.5 border transition-all uppercase hover:border-white opacity-90`}>
                                             {childTag}
                                         </button>
                                     );
@@ -571,6 +479,7 @@ const handleSaveTag = async () => {
                 </div>
             </div>
 
+            {/* TIMELINE */}
             <div className="absolute bottom-0 left-0 md:top-0 md:right-0 md:left-auto w-full md:w-[420px] h-[40vh] md:h-full p-4 z-[950] pointer-events-none flex flex-col">
                 <div className="industrial-panel pointer-events-auto flex-1 flex flex-col shadow-2xl md:border-l md:border-t-0 border-t border-hlzPurple/50 overflow-hidden">
                     <div className="p-4 pb-2 border-b border-gray-800 bg-[#0a0a0af0] z-20 shrink-0">
@@ -599,22 +508,15 @@ const handleSaveTag = async () => {
 
                                     {isExpanded && (
                                         <div className="px-3 pb-3 border-t border-gray-900 bg-black/40 fade-in">
-                                            
                                             <div className="my-3 border border-gray-800 relative flex items-center justify-center overflow-hidden bg-black min-h-[150px]">
-                                                {mem.type === 'photo' && mem.content && (
-                                                    <img src={mem.content} alt={mem.title} onClick={() => setFullScreenItem({ type: 'photo', src: mem.content })} className="w-full h-auto max-h-[300px] object-contain grayscale hover:grayscale-0 transition-all duration-500 cursor-pointer" title="Clique pour agrandir"/>
-                                                )}
+                                                {mem.type === 'photo' && mem.content && <img src={mem.content} alt={mem.title} onClick={() => setFullScreenItem({ type: 'photo', src: mem.content })} className="w-full h-auto max-h-[300px] object-contain grayscale hover:grayscale-0 transition-all duration-500 cursor-pointer" title="Clique pour agrandir"/>}
                                                 {mem.type === 'video' && mem.content && (
                                                     <div className="relative w-full cursor-pointer group" onClick={() => setFullScreenItem({ type: 'video', src: mem.content })}>
                                                         <video src={mem.content} className="w-full h-auto max-h-[300px] object-contain opacity-70 group-hover:opacity-100 transition-opacity"></video>
-                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                            <span className="bg-hlzPurple text-black text-[10px] font-bold px-3 py-1 uppercase tracking-widest">▶ Play</span>
-                                                        </div>
+                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><span className="bg-hlzPurple text-black text-[10px] font-bold px-3 py-1 uppercase tracking-widest">▶ Play</span></div>
                                                     </div>
                                                 )}
-                                                {mem.type === 'audio' && (
-                                                    <div className="p-4 w-full flex flex-col items-center justify-center"><Mic size={24} color="#A621FF" className="mb-2" /><audio src={mem.content} controls className="w-full h-8 opacity-80" /></div>
-                                                )}
+                                                {mem.type === 'audio' && <div className="p-4 w-full flex flex-col items-center justify-center"><Mic size={24} color="#A621FF" className="mb-2" /><audio src={mem.content} controls className="w-full h-8 opacity-80" /></div>}
                                                 {mem.type === 'text' && <FileText size={32} color="#555" />}
                                             </div>
 
@@ -651,7 +553,7 @@ const handleSaveTag = async () => {
                 </div>
             </div>
 
-            {/* MODAL DE GERENCIAMENTO DE TAGS (AGORA COM HIERARQUIA) */}
+            {/* MODAL DE GERENCIAMENTO DE TAGS (ADMIN COM SELECT FÁCIL) */}
             {showTagManager && session && (
                 <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                     <div className="industrial-panel p-6 w-full max-w-md shadow-[0_0_50px_rgba(166,33,255,0.2)] border-hlzPurple fade-in">
@@ -662,16 +564,14 @@ const handleSaveTag = async () => {
                         
                         <div className="max-h-[40vh] overflow-y-auto mb-6 space-y-2 pr-2">
                             {dbTags.map(tag => {
-                                const isChild = !!tag.parent_id;
-                                const parentTag = isChild ? dbTags.find(p => p.id === tag.parent_id) : null;
-                                
+                                const isChild = !!tag.parent_name;
                                 return (
-                                <div key={tag.id} className={`flex justify-between items-center bg-[#050505] border p-2 transition-colors ${editingTagId === tag.id ? 'border-hlzPurple' : 'border-gray-800 hover:border-gray-600'} ${isChild ? 'ml-6 border-l-2' : ''}`} style={{ borderLeftColor: isChild && parentTag ? parentTag.color : '' }}>
+                                <div key={tag.id} className={`flex justify-between items-center bg-[#050505] border p-2 transition-colors ${editingTagId === tag.id ? 'border-hlzPurple' : 'border-gray-800 hover:border-gray-600'} ${isChild ? 'ml-6 border-l-2 border-gray-500' : ''}`}>
                                     <div className="flex items-center gap-3">
                                         {!isChild && <div className="w-4 h-4 rounded-full border border-gray-500" style={{ backgroundColor: tag.color }}></div>}
                                         <div className="flex flex-col">
                                             <span className={`text-sm uppercase tracking-wider ${isChild ? 'text-gray-400' : 'text-white font-bold'}`}>#{tag.name}</span>
-                                            {isChild && parentTag && <span className="text-[8px] text-gray-600 uppercase">Filho de: {parentTag.name}</span>}
+                                            {isChild && <span className="text-[8px] text-gray-600 uppercase">Filho de: #{tag.parent_name}</span>}
                                         </div>
                                     </div>
                                     <div className="flex gap-3">
@@ -680,36 +580,24 @@ const handleSaveTag = async () => {
                                     </div>
                                 </div>
                             )})}
-                            {dbTags.length === 0 && <p className="text-xs text-gray-500">Aucun tag trouvé.</p>}
+                            {dbTags.length === 0 && <p className="text-xs text-gray-500">Aucun tag personnalisé trouvé.</p>}
                         </div>
 
                         <div className="border-t border-gray-800 pt-4 bg-[#0a0a0a] -mx-6 -mb-6 p-6">
-                            <h3 className="text-[10px] text-gray-500 uppercase tracking-widest mb-3">
-                                {editingTagId ? t.editTag : t.newTag}
-                            </h3>
+                            <h3 className="text-[10px] text-gray-500 uppercase tracking-widest mb-3">{editingTagId ? t.editTag : t.newTag}</h3>
                             <div className="flex flex-col gap-3">
                                 <div className="flex gap-2 items-center">
                                     <input type="text" placeholder={t.tagName} className="flex-1 industrial-input p-2 text-sm" value={newTagName} onChange={e => setNewTagName(e.target.value)} />
-                                    {/* Esconde o seletor de cor se for uma subcategoria (herda do pai) */}
-                                    {newTagParentId === "" && (
-                                        <input type="color" className="w-10 h-10 bg-transparent cursor-pointer border-0 p-0" value={newTagColor} onChange={e => setNewTagColor(e.target.value)} title={t.tagColor} />
-                                    )}
+                                    {newTagParentName === "" && <input type="color" className="w-10 h-10 bg-transparent cursor-pointer border-0 p-0" value={newTagColor} onChange={e => setNewTagColor(e.target.value)} title={t.tagColor} />}
                                 </div>
-                                
-                                {/* NOVO SELETOR DE PAI NO PAINEL ADMIN */}
                                 <div className="flex gap-2 items-center">
-                                    <select 
-                                        className="flex-1 industrial-input p-2 text-xs text-gray-400"
-                                        value={newTagParentId}
-                                        onChange={(e) => setNewTagParentId(e.target.value)}
-                                    >
-                                        <option value="">[ Categoria Principal ]</option>
-                                        {/* Só permite que Categorias Principais sejam escolhidas como pai */}
-                                        {dbTags.filter(t => !t.parent_id).map(parent => (
-                                            <option key={parent.id} value={parent.id}>Subcategoria de: #{parent.name}</option>
+                                    {/* MENU DROPDOWN LISTANDO AS CATEGORIAS DO CÓDIGO */}
+                                    <select className="flex-1 industrial-input p-2 text-xs text-gray-400" value={newTagParentName} onChange={(e) => setNewTagParentName(e.target.value)}>
+                                        <option value="">[ Tag Independente ]</option>
+                                        {Object.keys(BASE_HIERARCHY).map(parent => (
+                                            <option key={parent} value={parent}>Subcategoria de: #{parent}</option>
                                         ))}
                                     </select>
-                                    
                                     {editingTagId ? (
                                         <div className="flex gap-1">
                                             <button onClick={handleSaveTag} className="bg-hlzPurple text-black font-bold px-3 py-2 uppercase text-[10px] hover:bg-white transition-colors">{t.save}</button>
@@ -741,6 +629,7 @@ const handleSaveTag = async () => {
                 </div>
             )}
 
+            {/* NOUVEAU SIGNAL - COM O SELETOR VISUAL DA CASCATA PERFEITA */}
             {isAdding && session && (
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[1100] w-11/12 max-w-md">
                     <div className="industrial-panel p-6 shadow-[0_0_50px_rgba(0,0,0,0.9)] border-hlzPurple">
@@ -789,11 +678,11 @@ const handleSaveTag = async () => {
                             <textarea placeholder={t.notes} className="w-full industrial-input p-3 h-24 resize-none" value={newMemory.description} onChange={e => setNewMemory({...newMemory, description: e.target.value})}></textarea>
                             <input type="text" placeholder={t.mediaUrl} className="w-full industrial-input p-3 text-xs" value={newMemory.content} onChange={e => setNewMemory({...newMemory, content: e.target.value})} />
                             
-                            {/* --- SELETOR VISUAL DINÂMICO --- */}
+                            {/* --- SELETOR VISUAL DINÂMICO PARA CADASTRAR O SINAL --- */}
                             <div className="w-full industrial-input p-3 space-y-3 bg-[#050505]">
                                 <span className="text-[10px] text-gray-500 uppercase tracking-widest block">{t.context} / Tags</span>
                                 <div className="max-h-[150px] overflow-y-auto pr-2 space-y-3">
-                                    {Object.entries(dynamicHierarchy).map(([parent, data]) => (
+                                    {Object.entries(currentHierarchy).map(([parent, data]) => (
                                         <div key={parent} className="border-l-2 pl-2" style={{ borderColor: data.color }}>
                                             <button 
                                                 onClick={(e) => {
@@ -838,7 +727,7 @@ const handleSaveTag = async () => {
                                         </div>
                                     ))}
                                 </div>
-                                <input type="text" placeholder="Ou digite tags extra (separadas por virgule)..." className="w-full bg-transparent border-t border-gray-800 pt-2 text-xs text-gray-400 focus:outline-none" value={newMemory.tags} onChange={e => setNewMemory({...newMemory, tags: e.target.value})} />
+                                <input type="text" placeholder="Ou digite tags extra (separadas por vírgula)..." className="w-full bg-transparent border-t border-gray-800 pt-2 text-xs text-gray-400 focus:outline-none" value={newMemory.tags} onChange={e => setNewMemory({...newMemory, tags: e.target.value})} />
                             </div>
 
                             <button onClick={handleSaveMemory} className="w-full bg-hlzPurple hover:bg-white hover:text-black text-black font-bold py-3 uppercase tracking-widest transition-all">{t.save}</button>
@@ -868,45 +757,4 @@ const handleSaveTag = async () => {
                                         <h3 className="text-xl font-bold text-white uppercase mb-4 border-l-2 border-hlzPurple pl-3">{t.aboutProjectTitle}</h3>
                                         <p className="text-sm text-gray-400 leading-relaxed text-justify font-light">{t.aboutProjectDesc}</p>
                                     </div>
-                                    <div className="bg-black border border-gray-800 relative group flex items-center justify-center p-4 min-h-[200px]">
-                                        <div className="relative z-10 flex flex-col items-center gap-2">
-                                            <Radio size={32} color="#A621FF" />
-                                            <span className="bg-black/80 px-3 py-1 text-[10px] text-hlzPurple border border-hlzPurple/30 tracking-widest uppercase backdrop-blur-sm">RADIAN RESEARCH PROGRAM</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            {aboutTab === 'author' && (
-                                <div className="fade-in grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div>
-                                        <h3 className="text-xl font-bold text-white uppercase mb-4 border-l-2 border-hlzPurple pl-3">{t.aboutAuthorTitle}</h3>
-                                        <p className="text-sm text-gray-400 leading-relaxed text-justify font-light">{t.aboutAuthorDesc}</p>
-                                    </div>
-                                    <div className="bg-black border border-gray-800 relative group flex items-center justify-center p-4 min-h-[200px]">
-                                        <div className="relative z-10 flex flex-col items-center gap-2">
-                                            <User size={32} color="#A621FF" />
-                                            <span className="bg-black/80 px-3 py-1 text-[10px] text-hlzPurple border border-hlzPurple/30 tracking-widest uppercase backdrop-blur-sm">ARCHITECTE & CHERCHEUSE</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {fullScreenItem && (
-                <div className="fixed inset-0 z-[3000] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 fade-in" onClick={() => setFullScreenItem(null)}>
-                    <button className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors bg-black/50 p-2 rounded-full"><X size={32} /></button>
-                    {fullScreenItem.type === 'photo' ? (
-                        <img src={fullScreenItem.src} className="max-w-full max-h-full object-contain shadow-[0_0_50px_rgba(166,33,255,0.15)]" onClick={(e) => e.stopPropagation()} />
-                    ) : (
-                        <video src={fullScreenItem.src} controls autoPlay className="max-w-full max-h-full shadow-[0_0_50px_rgba(166,33,255,0.15)]" onClick={(e) => e.stopPropagation()}></video>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-};
-
-export default App;
+                                    <div className="bg-black border border-gray-800 relative group
