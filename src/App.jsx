@@ -1,22 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Search, X, Crosshair, Radio, User, Mic, FileText, Lock, Unlock, LogOut, Edit, Trash2, Copy, Tag, ChevronRight } from 'lucide-react';
 import { supabase } from './supabase';
 
 const PALETTE = { purple: '#A621FF', neutralBg: '#0A0A0A' };
-
-const BASE_HIERARCHY = {
-    "art": { color: "#FF3366", children: ["intervention urbaine", "performance", "archives visuelles", "paysage sonore"] },
-    "chat": { color: "#33CCFF", children: ["entretiens", "récits", "débats", "informel"] },
-    "films": { color: "#FF9933", children: ["courts-métrages", "images d'archives", "making of"] },
-    "genre": { color: "#CC33FF", children: ["travail féminin", "maternité et lutte", "corps et espace", "masculinités"] },
-    "habitat": { color: "#33FF99", children: ["campements", "convivialité", "précarité", "quotidien"] },
-    "terrain": { color: "#FFFF33", children: ["ruines", "infrastructures", "exploration"] },
-    "territoire / paysage": { color: "#FF33CC", children: ["grands chantiers", "nature vs machine", "frontières", "atmosphère"] },
-    "travail": { color: "#FF3333", children: ["usine", "zones d'exploitation", "grèves", "gestes"] },
-    "vidéos": { color: "#3366FF", children: ["b-roll", "timelapse", "caméra en mouvement"] }
-};
 
 const TRANSLATIONS = {
     fr: {
@@ -82,30 +70,30 @@ const App = () => {
     const linesRef = useRef([]);
     const timelineRefs = useRef({});
 
-    // CÉREBRO DE HIERARQUIA 100% CORRIGIDO
+    // --- CÉREBRO 100% BANCO DE DADOS (SUPABASE) ---
     const currentHierarchy = useMemo(() => {
-        const merged = JSON.parse(JSON.stringify(BASE_HIERARCHY));
-        // 1. Injeta Categorias Pais criadas no Banco
+        const hierarchy = {};
+        
+        // 1. Cria os pais (Tags que não têm parent_name)
         dbTags.filter(t => !t.parent_name).forEach(tag => {
-            const name = tag.name.toLowerCase();
-            if (!merged[name]) merged[name] = { color: tag.color || '#FFFFFF', children: [] };
+            hierarchy[tag.name.toLowerCase()] = { color: tag.color || '#FFFFFF', children: [] };
         });
-        // 2. Injeta as Subcategorias (em pais base ou novos)
+        
+        // 2. Coloca os filhos dentro dos pais (Tags que têm parent_name)
         dbTags.filter(t => t.parent_name).forEach(tag => {
             const pName = tag.parent_name.toLowerCase();
-            if (merged[pName] && !merged[pName].children.includes(tag.name.toLowerCase())) {
-                merged[pName].children.push(tag.name.toLowerCase());
+            if (hierarchy[pName] && !hierarchy[pName].children.includes(tag.name.toLowerCase())) {
+                hierarchy[pName].children.push(tag.name.toLowerCase());
             }
         });
-        return merged;
+        return hierarchy;
     }, [dbTags]);
 
-    // LISTA TODOS OS PAIS (BASE + BANCO) PARA O DROPDOWN DO ADMIN
     const allParentOptions = useMemo(() => {
         return Object.keys(currentHierarchy).sort();
     }, [currentHierarchy]);
 
-    const getDerivedTagColor = (tagName) => {
+    const getDerivedTagColor = useCallback((tagName) => {
         const lowerTag = tagName.toLowerCase();
         if (currentHierarchy[lowerTag]) return currentHierarchy[lowerTag].color;
         for (const [, data] of Object.entries(currentHierarchy)) {
@@ -113,7 +101,7 @@ const App = () => {
         }
         const dbTag = dbTags.find(t => t.name.toLowerCase() === lowerTag);
         return dbTag ? dbTag.color : '#FFFFFF'; 
-    };
+    }, [currentHierarchy, dbTags]);
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
@@ -125,7 +113,7 @@ const App = () => {
         const fetchData = async () => {
             const { data: mData } = await supabase.from('markers').select('*');
             if (mData) setMemories(mData);
-            const { data: tData } = await supabase.from('tags').select('*'); // Puxa tudo, incluindo parent_name
+            const { data: tData } = await supabase.from('tags').select('*');
             if (tData) setDbTags(tData);
         };
         fetchData();
@@ -228,7 +216,7 @@ const App = () => {
                 }
             }
         }
-    }, [filteredMemories, selectedMemory, activeParentFilter, searchQuery, mapStyle, dbTags, currentHierarchy]); 
+        }, [filteredMemories, selectedMemory, activeParentFilter, searchQuery, mapStyle, dbTags, currentHierarchy, getDerivedTagColor]);
 
     const closeModal = () => { setIsAdding(false); setEditingId(null); setNewMemory({ lat: "", lng: "", title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: "" }); };
 
@@ -289,7 +277,6 @@ const App = () => {
         <div className="relative w-full h-screen font-mono text-gray-200">
             <div ref={mapRef} id="map" className="h-full w-full"></div>
 
-            {/* PAINEL ESQUERDO */}
             <div className="absolute top-0 left-0 w-full md:w-[380px] p-4 z-[1000] pointer-events-none flex flex-col gap-4">
                 <div className="industrial-panel p-5 border-l-4 border-l-hlzPurple pointer-events-auto shrink-0 flex flex-col max-h-[90vh] overflow-y-auto">
                     <div className="flex justify-between items-center mb-3">
@@ -365,7 +352,6 @@ const App = () => {
                 </div>
             </div>
 
-            {/* TIMELINE */}
             <div className="absolute bottom-0 left-0 md:top-0 md:right-0 md:left-auto w-full md:w-[420px] h-[40vh] md:h-full p-4 z-[950] pointer-events-none flex flex-col">
                 <div className="industrial-panel pointer-events-auto flex-1 flex flex-col shadow-2xl md:border-l md:border-t-0 border-t border-hlzPurple/50 overflow-hidden">
                     <div className="p-4 pb-2 border-b border-gray-800 bg-[#0a0a0af0] z-20 shrink-0">
@@ -420,7 +406,7 @@ const App = () => {
                 </div>
             </div>
 
-            {/* GERENCIAMENTO DE TAGS ADMIN */}
+            {/* GERENCIAMENTO DE TAGS ADMIN 100% SUPABASE */}
             {showTagManager && session && (
                 <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                     <div className="industrial-panel p-6 w-full max-w-md shadow-[0_0_50px_rgba(166,33,255,0.2)] border-hlzPurple fade-in">
@@ -430,11 +416,13 @@ const App = () => {
                         </div>
                         
                         <div className="max-h-[40vh] overflow-y-auto mb-6 space-y-2 pr-2">
-                            {/* Renderiza Pais Primeiro */}
+                            {/* Renderiza Pais e depois os Filhos */}
                             {allParentOptions.map(parentName => {
                                 const parentData = currentHierarchy[parentName];
                                 const parentDbTag = dbTags.find(t => t.name.toLowerCase() === parentName && !t.parent_name);
-                                const isCustomParent = !!parentDbTag;
+                                
+                                // Se a tag pai não existe no banco (algo estranho), ignoramos
+                                if (!parentDbTag) return null;
 
                                 return (
                                 <React.Fragment key={`group-${parentName}`}>
@@ -444,14 +432,8 @@ const App = () => {
                                             <span className="text-sm uppercase font-bold text-white">#{parentName}</span>
                                         </div>
                                         <div className="flex gap-3">
-                                            {isCustomParent ? (
-                                                <>
-                                                    <button onClick={() => handleEditTagClick(parentDbTag)} className="text-gray-500 hover:text-blue-400"><Edit size={14}/></button>
-                                                    <button onClick={() => handleDeleteTag(parentDbTag.id)} className="text-gray-500 hover:text-red-500"><Trash2 size={14}/></button>
-                                                </>
-                                            ) : (
-                                                <span className="text-[8px] text-gray-500 uppercase">Tag Fixa</span>
-                                            )}
+                                            <button onClick={() => handleEditTagClick(parentDbTag)} className="text-gray-500 hover:text-blue-400"><Edit size={14}/></button>
+                                            <button onClick={() => handleDeleteTag(parentDbTag.id)} className="text-gray-500 hover:text-red-500"><Trash2 size={14}/></button>
                                         </div>
                                     </div>
                                     {/* Renderiza Filhos daquele Pai */}
@@ -466,6 +448,7 @@ const App = () => {
                                     ))}
                                 </React.Fragment>
                             )})}
+                            {dbTags.length === 0 && <p className="text-xs text-gray-500">Aucun tag trouvé. Créez-en un nouveau!</p>}
                         </div>
 
                         <div className="border-t border-gray-800 pt-4 bg-[#0a0a0a] -mx-6 -mb-6 p-6">
@@ -476,10 +459,11 @@ const App = () => {
                                     {newTagParentName === "" && <input type="color" className="w-10 h-10 bg-transparent cursor-pointer border-0 p-0" value={newTagColor} onChange={e => setNewTagColor(e.target.value)} />}
                                 </div>
                                 <div className="flex gap-2 items-center">
+                                    {/* TEXTO LIMPO: Sem "Subtag de:" */}
                                     <select className="flex-1 industrial-input p-2 text-xs text-gray-400" value={newTagParentName} onChange={(e) => setNewTagParentName(e.target.value)}>
                                         <option value="">[ Nova Categoria Principal ]</option>
                                         {allParentOptions.map(parent => (
-                                            <option key={`opt-${parent}`} value={parent}>Subtag de: #{parent}</option>
+                                            <option key={`opt-${parent}`} value={parent}>#{parent}</option>
                                         ))}
                                     </select>
                                     {editingTagId ? (
@@ -560,6 +544,54 @@ const App = () => {
                             </div>
 
                             <button onClick={handleSaveMemory} className="w-full bg-hlzPurple text-black font-bold py-3 uppercase">Salvar Ponto</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* MODAL ABOUT (À PROPOS) - Restaurado */}
+            {aboutTab && (
+                <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="industrial-panel p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto fade-in shadow-[0_0_50px_rgba(166,33,255,0.2)] border-hlzPurple">
+                        <div className="flex justify-between items-start mb-6 border-b border-gray-800 pb-4">
+                            <div>
+                                <div className="flex items-center gap-2 mb-2"><span className="w-1.5 h-1.5 bg-hlzPurple animate-pulse"></span><p className="text-hlzPurple text-[10px] tracking-widest font-bold uppercase">INFO SYS</p></div>
+                                <h2 className="text-3xl font-bold text-white uppercase leading-none tracking-tight">{aboutTab === 'project' ? t.aboutTitle : t.authorTitle}</h2>
+                            </div>
+                            <button onClick={() => setAboutTab(null)} className="text-gray-600 hover:text-white transition-colors"><X size={24}/></button>
+                        </div>
+                        <div className="flex gap-6 mb-8 border-b border-gray-800">
+                            <button onClick={() => setAboutTab('project')} className={`pb-2 text-sm font-bold uppercase tracking-widest transition-colors ${aboutTab === 'project' ? 'text-hlzPurple border-b-2 border-hlzPurple' : 'text-gray-500 hover:text-gray-300'}`}>{t.aboutTitle}</button>
+                            <button onClick={() => setAboutTab('author')} className={`pb-2 text-sm font-bold uppercase tracking-widest transition-colors ${aboutTab === 'author' ? 'text-hlzPurple border-b-2 border-hlzPurple' : 'text-gray-500 hover:text-gray-300'}`}>{t.authorTitle}</button>
+                        </div>
+                        <div className="space-y-8 flex-1">
+                            {aboutTab === 'project' && (
+                                <div className="fade-in grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white uppercase mb-4 border-l-2 border-hlzPurple pl-3">{t.aboutProjectTitle}</h3>
+                                        <p className="text-sm text-gray-400 leading-relaxed text-justify font-light">{t.aboutProjectDesc}</p>
+                                    </div>
+                                    <div className="bg-black border border-gray-800 relative group flex items-center justify-center p-4 min-h-[200px]">
+                                        <div className="relative z-10 flex flex-col items-center gap-2">
+                                            <Radio size={32} color="#A621FF" />
+                                            <span className="bg-black/80 px-3 py-1 text-[10px] text-hlzPurple border border-hlzPurple/30 tracking-widest uppercase backdrop-blur-sm">RADIAN RESEARCH PROGRAM</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            {aboutTab === 'author' && (
+                                <div className="fade-in grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white uppercase mb-4 border-l-2 border-hlzPurple pl-3">{t.aboutAuthorTitle}</h3>
+                                        <p className="text-sm text-gray-400 leading-relaxed text-justify font-light">{t.aboutAuthorDesc}</p>
+                                    </div>
+                                    <div className="bg-black border border-gray-800 relative group flex items-center justify-center p-4 min-h-[200px]">
+                                        <div className="relative z-10 flex flex-col items-center gap-2">
+                                            <User size={32} color="#A621FF" />
+                                            <span className="bg-black/80 px-3 py-1 text-[10px] text-hlzPurple border border-hlzPurple/30 tracking-widest uppercase backdrop-blur-sm">ARCHITECTE & CHERCHEUSE</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
