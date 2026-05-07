@@ -6,7 +6,6 @@ import { supabase } from './supabase';
 
 const PALETTE = { purple: '#A621FF', neutralBg: '#0A0A0A' };
 
-// --- OS SEUS FILTROS VOLTARAM (INTACTOS E FIXOS) ---
 const BASE_HIERARCHY = {
     "art": { color: "#FF3366", children: ["intervention urbaine", "performance", "archives visuelles", "paysage sonore"] },
     "chat": { color: "#33CCFF", children: ["entretiens", "récits", "débats", "informel"] },
@@ -21,38 +20,24 @@ const BASE_HIERARCHY = {
 
 const TRANSLATIONS = {
     fr: {
-        subtitle: "Journal de terrain(s)", searchPlaceholder: "Rechercher (lieu, tag)...",
-        clear: "Effacer", newSignal: "Nouveau Signal", editSignal: "Éditer le Signal", idPlace: "Identifiant / Lieu",
-        notes: "Notes de terrain...", mediaUrl: "URL Média", keywords: "Mots-clés (virgule)",
-        dateTimeStr: "Date et Heure", save: "Enregistrer", recordedOn: "Enregistré le", coords: "COORD", context: "Contexte & Tags",
-        lat: "Latitude", lng: "Longitude",
-        types: { text: "Texte", photo: "Photo", video: "Vidéo", audio: "Audio" },
-        selectHint: "Sélectionnez un thème pour explorer les sous-catégories.", timeline: "Chronologie",
-        aboutProjectBtn: "À Propos", aboutAuthorBtn: "Misia Forlen", aboutTitle: "À Propos",
-        authorTitle: "Misia Forlen", aboutProjectTitle: "Le Projet: Habiter la Zone",
-        aboutProjectDesc: "Une exploration de recherche-création documentant les conditions de vie des travailleurs mobiles dans les Zones Économiques Spéciales (ZES) et les grands chantiers industriels. Le projet cartographie les frontières invisibles, les infrastructures logistiques et les habitats précaires, questionnant la notion de 'care' dans la mobilité perpétuelle.",
-        aboutAuthorTitle: "L'Auteure: Misia Forlen", aboutAuthorDesc: "Architecte et doctorante au sein du programme RADIAN (Recherche en Art, Design, Innovation, Architecture en Normandie). Ses travaux se concentrent sur la cartographie et l'observation des modes de vie liés à l'hyper-mobilité du travail industriel.",
-        mapType: "Carte", mapStyleDark: "Sombre", mapStyleLight: "Clair", mapStyleSat: "Sat", directionView: "Angle de Vue",
-        login: "Connexion", email: "E-mail", password: "Mot de passe", enter: "Entrer",
-        edit: "Éditer", duplicate: "Dupliquer", delete: "Supprimer", deleteConfirm: "Êtes-vous sûr de vouloir supprimer ?",
-        manageTags: "Gérer les Tags", newTag: "Nouveau Tag", editTag: "Éditer le Tag", tagName: "Nom du tag", tagColor: "Couleur", addTag: "Ajouter"
+        subtitle: "Journal de terrain(s)", searchPlaceholder: "Rechercher...", clear: "Effacer", newSignal: "Nouveau Signal", editSignal: "Éditer", 
+        idPlace: "Identifiant", notes: "Notes...", mediaUrl: "URL", dateTimeStr: "Date", save: "Enregistrer", context: "Tags", lat: "Lat", lng: "Lng",
+        types: { text: "Texte", photo: "Photo", video: "Vidéo", audio: "Audio" }, selectHint: "Sélectionnez un thème", timeline: "Chronologie",
+        aboutProjectBtn: "À Propos", aboutAuthorBtn: "Misia Forlen", aboutTitle: "À Propos", authorTitle: "Misia Forlen",
+        aboutProjectTitle: "Le Projet", aboutProjectDesc: "Recherche-création documentant les ZES.", aboutAuthorTitle: "L'Auteure",
+        aboutAuthorDesc: "Architecte et doctorante RADIAN.", mapType: "Carte", mapStyleDark: "Sombre", mapStyleLight: "Clair", mapStyleSat: "Sat", directionView: "Vue",
+        login: "Connexion", email: "E-mail", password: "Mot de passe", enter: "Entrer", edit: "Éditer", duplicate: "Dupliquer", delete: "Supprimer", deleteConfirm: "Sûr?",
+        manageTags: "Gérer les Tags", newTag: "Nouveau Tag", editTag: "Éditer Tag", tagName: "Nom", tagColor: "Couleur", addTag: "Ajouter"
     },
     en: {
-        subtitle: "Zone Mapping System", searchPlaceholder: "Search (location, tag)...",
-        clear: "Clear", newSignal: "New Signal", editSignal: "Edit Signal", idPlace: "ID / Location",
-        notes: "Field notes...", mediaUrl: "Media URL", keywords: "Keywords (comma)",
-        dateTimeStr: "Date & Time", save: "Save Record", recordedOn: "Recorded on", coords: "COORD", context: "Context & Tags",
-        lat: "Latitude", lng: "Longitude",
-        types: { text: "Text", photo: "Photo", video: "Video", audio: "Audio" },
-        selectHint: "Select a theme to explore subcategories.", timeline: "Timeline",
-        aboutProjectBtn: "About", aboutAuthorBtn: "Misia Forlen", aboutTitle: "About",
-        authorTitle: "Misia Forlen", aboutProjectTitle: "The Project: Habiter la Zone",
-        aboutProjectDesc: "A research-creation exploration documenting the living conditions of mobile workers in Special Economic Zones (SEZ) and large industrial sites. The project maps invisible borders, logistical infrastructures, and precarious habitats, questioning the notion of 'care' in perpetual mobility.",
-        aboutAuthorTitle: "The Author: Misia Forlen", aboutAuthorDesc: "Architect and PhD candidate in the RADIAN program (Research in Art, Design, Innovation, Architecture in Normandy). Her work focuses on mapping and observing lifestyles tied to the hyper-mobility of industrial work.",
-        mapType: "Map", mapStyleDark: "Dark", mapStyleLight: "Light", mapStyleSat: "Sat", directionView: "View Angle",
-        login: "System Login", email: "Email", password: "Password", enter: "Enter",
-        edit: "Edit", duplicate: "Duplicate", delete: "Delete", deleteConfirm: "Are you sure you want to delete?",
-        manageTags: "Manage Tags", newTag: "New Tag", editTag: "Edit Tag", tagName: "Tag Name", tagColor: "Color", addTag: "Add"
+        subtitle: "Mapping System", searchPlaceholder: "Search...", clear: "Clear", newSignal: "New Signal", editSignal: "Edit", 
+        idPlace: "ID", notes: "Notes...", mediaUrl: "URL", dateTimeStr: "Date", save: "Save", context: "Tags", lat: "Lat", lng: "Lng",
+        types: { text: "Text", photo: "Photo", video: "Video", audio: "Audio" }, selectHint: "Select a theme", timeline: "Timeline",
+        aboutProjectBtn: "About", aboutAuthorBtn: "Misia Forlen", aboutTitle: "About", authorTitle: "Misia Forlen",
+        aboutProjectTitle: "The Project", aboutProjectDesc: "Research-creation in SEZ.", aboutAuthorTitle: "The Author",
+        aboutAuthorDesc: "Architect and PhD RADIAN.", mapType: "Map", mapStyleDark: "Dark", mapStyleLight: "Light", mapStyleSat: "Sat", directionView: "View",
+        login: "Login", email: "Email", password: "Password", enter: "Enter", edit: "Edit", duplicate: "Duplicate", delete: "Delete", deleteConfirm: "Sure?",
+        manageTags: "Manage Tags", newTag: "New Tag", editTag: "Edit Tag", tagName: "Name", tagColor: "Color", addTag: "Add"
     }
 };
 
@@ -60,47 +45,34 @@ const formatDateTime = (datetimeStr, lang) => {
     if (!datetimeStr) return "";
     const d = new Date(datetimeStr);
     if (isNaN(d.getTime())) return datetimeStr;
-    if (lang === 'fr') {
-        const day = String(d.getDate()).padStart(2, '0');
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        return `${day}-${month}-${d.getFullYear()} à ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    } else {
-        let hours = d.getHours();
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12 || 12;
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} at ${String(hours).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${ampm}`;
-    }
+    if (lang === 'fr') return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()} à ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    let h = d.getHours(), ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} at ${String(h).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${ampm}`;
 };
 
 const App = () => {
     const [lang, setLang] = useState('fr');
     const t = TRANSLATIONS[lang]; 
-    
     const [memories, setMemories] = useState([]);
     const [dbTags, setDbTags] = useState([]); 
     const [selectedMemory, setSelectedMemory] = useState(null);
     const [aboutTab, setAboutTab] = useState(null);
     const [mapStyle, setMapStyle] = useState('dark');
-    
     const [activeParentFilter, setActiveParentFilter] = useState(null);
     const [activeSubFilters, setActiveSubFilters] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
-    
     const [session, setSession] = useState(null);
     const [showLogin, setShowLogin] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState(null); 
     const [newMemory, setNewMemory] = useState({ lat: "", lng: "", title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: "" });
-    
     const [fullScreenItem, setFullScreenItem] = useState(null);
-    
     const [showTagManager, setShowTagManager] = useState(false);
     const [newTagName, setNewTagName] = useState("");
     const [newTagColor, setNewTagColor] = useState("#A621FF");
-    const [newTagParentName, setNewTagParentName] = useState(""); // Novo estado (Texto simples)
+    const [newTagParentName, setNewTagParentName] = useState(""); 
     const [editingTagId, setEditingTagId] = useState(null);
 
     const mapRef = useRef(null);
@@ -110,28 +82,33 @@ const App = () => {
     const linesRef = useRef([]);
     const timelineRefs = useRef({});
 
-    // --- CÉREBRO QUE JUNTA O FIXO COM O DINÂMICO ---
+    // CÉREBRO DE HIERARQUIA 100% CORRIGIDO
     const currentHierarchy = useMemo(() => {
-        // Copia a base original
         const merged = JSON.parse(JSON.stringify(BASE_HIERARCHY));
-        
-        // Pega as tags do Supabase e injeta nas categorias pai
-        dbTags.forEach(tag => {
-            const parentKey = tag.parent_name?.toLowerCase();
-            if (parentKey && merged[parentKey]) {
-                const childName = tag.name.toLowerCase();
-                if (!merged[parentKey].children.includes(childName)) {
-                    merged[parentKey].children.push(childName);
-                }
+        // 1. Injeta Categorias Pais criadas no Banco
+        dbTags.filter(t => !t.parent_name).forEach(tag => {
+            const name = tag.name.toLowerCase();
+            if (!merged[name]) merged[name] = { color: tag.color || '#FFFFFF', children: [] };
+        });
+        // 2. Injeta as Subcategorias (em pais base ou novos)
+        dbTags.filter(t => t.parent_name).forEach(tag => {
+            const pName = tag.parent_name.toLowerCase();
+            if (merged[pName] && !merged[pName].children.includes(tag.name.toLowerCase())) {
+                merged[pName].children.push(tag.name.toLowerCase());
             }
         });
         return merged;
     }, [dbTags]);
 
+    // LISTA TODOS OS PAIS (BASE + BANCO) PARA O DROPDOWN DO ADMIN
+    const allParentOptions = useMemo(() => {
+        return Object.keys(currentHierarchy).sort();
+    }, [currentHierarchy]);
+
     const getDerivedTagColor = (tagName) => {
         const lowerTag = tagName.toLowerCase();
         if (currentHierarchy[lowerTag]) return currentHierarchy[lowerTag].color;
-        for (const [parentName, data] of Object.entries(currentHierarchy)) {
+        for (const [, data] of Object.entries(currentHierarchy)) {
             if (data.children.includes(lowerTag)) return data.color;
         }
         const dbTag = dbTags.find(t => t.name.toLowerCase() === lowerTag);
@@ -148,8 +125,7 @@ const App = () => {
         const fetchData = async () => {
             const { data: mData } = await supabase.from('markers').select('*');
             if (mData) setMemories(mData);
-            // Puxa as tags com a nova coluna parent_name
-            const { data: tData } = await supabase.from('tags').select('id, name, color, parent_name');
+            const { data: tData } = await supabase.from('tags').select('*'); // Puxa tudo, incluindo parent_name
             if (tData) setDbTags(tData);
         };
         fetchData();
@@ -161,7 +137,6 @@ const App = () => {
         if (error) alert("Erro: " + error.message);
         else { setShowLogin(false); setEmail(''); setPassword(''); }
     };
-
     const handleLogout = async () => await supabase.auth.signOut();
 
     useEffect(() => {
@@ -170,7 +145,6 @@ const App = () => {
         }
     }, [selectedMemory]);
 
-    // O Filtro recalculado com useMemo (corrigindo o erro do ESLint)
     const filteredMemories = useMemo(() => {
         let result = memories;
         if (activeParentFilter) {
@@ -184,11 +158,7 @@ const App = () => {
         }
         if (searchQuery.trim() !== "") {
             const query = searchQuery.toLowerCase();
-            result = result.filter(m => 
-                (m.title && m.title.toLowerCase().includes(query)) ||
-                (m.description && m.description.toLowerCase().includes(query)) ||
-                (m.tags && m.tags.some(t => t.toLowerCase().includes(query)))
-            );
+            result = result.filter(m => (m.title && m.title.toLowerCase().includes(query)) || (m.description && m.description.toLowerCase().includes(query)) || (m.tags && m.tags.some(t => t.toLowerCase().includes(query))));
         }
         return result;
     }, [memories, activeParentFilter, activeSubFilters, searchQuery, currentHierarchy]);
@@ -198,29 +168,22 @@ const App = () => {
     useEffect(() => {
         if (!mapInstanceRef.current && mapRef.current) {
             const map = L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([49.52, -1.80], 12);
-            const initialLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(map);
-            tileLayerRef.current = initialLayer;
+            tileLayerRef.current = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(map);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
             setTimeout(() => map.invalidateSize(), 250);
 
             map.on('click', (e) => {
                 supabase.auth.getSession().then(({ data: { session } }) => {
                     if (session && !showTagManager) { 
-                        const now = new Date();
-                        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-                        setEditingId(null); 
-                        setNewMemory({ lat: e.latlng.lat, lng: e.latlng.lng, title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: now.toISOString().slice(0, 16) });
-                        setIsAdding(true);
-                        setSelectedMemory(null);
-                        setAboutTab(null);
+                        const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                        setEditingId(null); setNewMemory({ lat: e.latlng.lat, lng: e.latlng.lng, title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: now.toISOString().slice(0, 16) });
+                        setIsAdding(true); setSelectedMemory(null); setAboutTab(null);
                     }
                 });
             });
             mapInstanceRef.current = map;
         }
-        return () => {
-            if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null; }
-        };
+        return () => { if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null; } };
     }, [showTagManager]);
 
     useEffect(() => {
@@ -234,60 +197,40 @@ const App = () => {
 
     const handleSelectMemory = (mem) => {
         setSelectedMemory(mem); setAboutTab(null); setIsAdding(false);
-        if (mapInstanceRef.current) {
-            mapInstanceRef.current.setView([mem.lat, mem.lng], mapInstanceRef.current.getZoom(), { animate: true, duration: 1.2 });
-        }
+        if (mapInstanceRef.current) mapInstanceRef.current.setView([mem.lat, mem.lng], mapInstanceRef.current.getZoom(), { animate: true, duration: 1.2 });
     };
 
     useEffect(() => {
         const map = mapInstanceRef.current;
         if (!map) return;
-
         Object.values(markersRef.current).forEach(m => map.removeLayer(m));
         linesRef.current.forEach(l => map.removeLayer(l));
-        markersRef.current = {};
-        linesRef.current = [];
+        markersRef.current = {}; linesRef.current = [];
 
         filteredMemories.forEach(mem => {
             const coreColor = mapStyle === 'light' ? '#0A0A0A' : '#ffffff';
             const coneColor = mapStyle === 'light' ? 'rgba(166, 33, 255, 0.4)' : 'rgba(166, 33, 255, 0.65)';
             const strokeColor = mapStyle === 'light' ? '#7C3AED' : '#D8B4FE';
-            let boxShadowString = 'none';
-            if (mem.tags && mem.tags.length > 0) {
-               boxShadowString = mem.tags.map((tag, i) => `0 0 0 ${(i + 1) * 2}px ${getDerivedTagColor(tag)}`).join(', ');
-            }
+            let boxSh = 'none';
+            if (mem.tags && mem.tags.length > 0) boxSh = mem.tags.map((tag, i) => `0 0 0 ${(i + 1) * 2}px ${getDerivedTagColor(tag)}`).join(', ');
 
-            const iconHtml = `
-                <div class="marker-container">
-                    <svg width="48" height="48" viewBox="0 0 48 48" style="position: absolute; top: 0; left: 0; transform: rotate(${mem.direction || 0}deg); transform-origin: center; pointer-events: none; overflow: visible;">
-                        <path d="M24,24 L6,4 A26,26 0 0,1 42,4 Z" class="cone-path" fill="${coneColor}" stroke="${strokeColor}" stroke-width="1.5" />
-                    </svg>
-                    <div class="marker-core" style="box-shadow: ${boxShadowString}; background-color: ${coreColor};"></div>
-                </div>
-            `;
+            const iconHtml = `<div class="marker-container"><svg width="48" height="48" viewBox="0 0 48 48" style="position: absolute; top: 0; left: 0; transform: rotate(${mem.direction || 0}deg); transform-origin: center; pointer-events: none; overflow: visible;"><path d="M24,24 L6,4 A26,26 0 0,1 42,4 Z" fill="${coneColor}" stroke="${strokeColor}" stroke-width="1.5" /></svg><div class="marker-core" style="box-shadow: ${boxSh}; background-color: ${coreColor};"></div></div>`;
             const icon = L.divIcon({ className: 'custom-marker', html: iconHtml, iconSize: [48, 48], iconAnchor: [24, 24] });
-            const marker = L.marker([mem.lat, mem.lng], { icon })
-                .addTo(map)
-                .on('click', (e) => { L.DomEvent.stopPropagation(e); handleSelectMemory(mem); });
+            const marker = L.marker([mem.lat, mem.lng], { icon }).addTo(map).on('click', (e) => { L.DomEvent.stopPropagation(e); handleSelectMemory(mem); });
             markersRef.current[mem.id] = marker;
         });
 
         if (filteredMemories.length > 1 && (activeParentFilter || searchQuery)) {
             for (let i = 0; i < filteredMemories.length; i++) {
                 for (let j = i + 1; j < filteredMemories.length; j++) {
-                    const polyline = L.polyline([[filteredMemories[i].lat, filteredMemories[i].lng], [filteredMemories[j].lat, filteredMemories[j].lng]], 
-                        { color: PALETTE.purple, weight: 2, opacity: 0.6, dashArray: '5, 5' }
-                    ).addTo(map);
+                    const polyline = L.polyline([[filteredMemories[i].lat, filteredMemories[i].lng], [filteredMemories[j].lat, filteredMemories[j].lng]], { color: PALETTE.purple, weight: 2, opacity: 0.6, dashArray: '5, 5' }).addTo(map);
                     linesRef.current.push(polyline);
                 }
             }
         }
     }, [filteredMemories, selectedMemory, activeParentFilter, searchQuery, mapStyle, dbTags, currentHierarchy]); 
 
-    const closeModal = () => {
-        setIsAdding(false); setEditingId(null);
-        setNewMemory({ lat: "", lng: "", title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: "" });
-    };
+    const closeModal = () => { setIsAdding(false); setEditingId(null); setNewMemory({ lat: "", lng: "", title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: "" }); };
 
     const handleDeleteMemory = async (id, e) => {
         e.stopPropagation(); 
@@ -297,27 +240,12 @@ const App = () => {
         }
     };
 
-    const handleEditClick = (mem, e) => {
-        e.stopPropagation();
-        setNewMemory({ ...mem, datetime: mem.date, tags: mem.tags ? mem.tags.join(', ') : "" });
-        setEditingId(mem.id); setIsAdding(true);
-    };
-
-    const handleDuplicateClick = (mem, e) => {
-        e.stopPropagation();
-        setNewMemory({ ...mem, title: mem.title + " (Copie)", datetime: mem.date, tags: mem.tags ? mem.tags.join(', ') : "", lat: mem.lat + 0.005, lng: mem.lng + 0.005 });
-        setEditingId(null); setIsAdding(true);
-    };
+    const handleEditClick = (mem, e) => { e.stopPropagation(); setNewMemory({ ...mem, datetime: mem.date, tags: mem.tags ? mem.tags.join(', ') : "" }); setEditingId(mem.id); setIsAdding(true); };
+    const handleDuplicateClick = (mem, e) => { e.stopPropagation(); setNewMemory({ ...mem, title: mem.title + " (Copie)", datetime: mem.date, tags: mem.tags ? mem.tags.join(', ') : "", lat: mem.lat + 0.005, lng: mem.lng + 0.005 }); setEditingId(null); setIsAdding(true); };
 
     const handleSaveMemory = async () => {
         if (!newMemory.title || newMemory.lat === "" || newMemory.lng === "" || !newMemory.datetime) return;
-        const memoryData = {
-            title: newMemory.title, lat: parseFloat(newMemory.lat), lng: parseFloat(newMemory.lng),
-            type: newMemory.type, content: newMemory.content, description: newMemory.description,
-            tags: newMemory.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean),
-            date: newMemory.datetime, direction: newMemory.direction
-        };
-
+        const memoryData = { title: newMemory.title, lat: parseFloat(newMemory.lat), lng: parseFloat(newMemory.lng), type: newMemory.type, content: newMemory.content, description: newMemory.description, tags: newMemory.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean), date: newMemory.datetime, direction: newMemory.direction };
         if (editingId) {
             const { error } = await supabase.from('markers').update(memoryData).eq('id', editingId);
             if (!error) { setMemories(memories.map(m => m.id === editingId ? { ...memoryData, id: editingId } : m)); closeModal(); }
@@ -328,25 +256,16 @@ const App = () => {
         }
     };
 
-    // --- GERENCIAMENTO DE TAGS REVISADO ---
-    const handleEditTagClick = (tag) => { 
-        setEditingTagId(tag.id); setNewTagName(tag.name); setNewTagColor(tag.color); 
-        setNewTagParentName(tag.parent_name || ""); 
-    };
-    
-    const handleCancelTagEdit = () => { 
-        setEditingTagId(null); setNewTagName(""); setNewTagColor("#A621FF"); setNewTagParentName(""); 
-    };
+    const handleEditTagClick = (tag) => { setEditingTagId(tag.id); setNewTagName(tag.name); setNewTagColor(tag.color); setNewTagParentName(tag.parent_name || ""); };
+    const handleCancelTagEdit = () => { setEditingTagId(null); setNewTagName(""); setNewTagColor("#A621FF"); setNewTagParentName(""); };
 
     const handleSaveTag = async () => {
         if (!newTagName.trim()) return;
-        
         const tagData = { 
             name: newTagName.trim().toLowerCase(), 
-            color: newTagColor,
-            parent_name: newTagParentName === "" ? null : newTagParentName.toLowerCase() // Simplesmente salva o nome do pai!
+            color: newTagColor, 
+            parent_name: newTagParentName === "" ? null : newTagParentName.toLowerCase() 
         };
-        
         if (editingTagId) {
             const { error } = await supabase.from('tags').update(tagData).eq('id', editingTagId);
             if (!error) { setDbTags(dbTags.map(t => t.id === editingTagId ? { ...t, ...tagData } : t)); handleCancelTagEdit(); }
@@ -363,21 +282,8 @@ const App = () => {
         }
     };
 
-    const toggleParentFilter = (parentTag) => {
-        setActiveParentFilter(activeParentFilter === parentTag ? null : parentTag);
-        setActiveSubFilters([]);
-    };
-
+    const toggleParentFilter = (parentTag) => { setActiveParentFilter(activeParentFilter === parentTag ? null : parentTag); setActiveSubFilters([]); };
     const toggleSubFilter = (childTag) => setActiveSubFilters(prev => prev.includes(childTag) ? prev.filter(t => t !== childTag) : [...prev, childTag]);
-
-    const customTags = useMemo(() => {
-        const allTags = new Set();
-        memories.forEach(m => { if (m.tags) m.tags.forEach(t => allTags.add(t.toLowerCase())) });
-        const allHierarchyTags = Object.keys(currentHierarchy).reduce((acc, key) => {
-            acc.push(key, ...currentHierarchy[key].children); return acc;
-        }, []);
-        return Array.from(allTags).filter(t => !allHierarchyTags.includes(t)).sort();
-    }, [memories, currentHierarchy]);
 
     return (
         <div className="relative w-full h-screen font-mono text-gray-200">
@@ -394,13 +300,8 @@ const App = () => {
                         </div>
                         <div className="flex gap-2 items-center">
                             {session ? (
-                                <>
-                                    <button onClick={() => setShowTagManager(true)} className="text-gray-400 hover:text-hlzPurple" title={t.manageTags}><Tag size={14} /></button>
-                                    <button onClick={handleLogout} className="text-hlzPurple hover:text-white" title="Logout"><LogOut size={14} /></button>
-                                </>
-                            ) : (
-                                <button onClick={() => setShowLogin(true)} className="text-gray-600 hover:text-hlzPurple" title="Login Admin"><Lock size={14} /></button>
-                            )}
+                                <><button onClick={() => setShowTagManager(true)} className="text-gray-400 hover:text-hlzPurple" title={t.manageTags}><Tag size={14} /></button><button onClick={handleLogout} className="text-hlzPurple hover:text-white" title="Logout"><LogOut size={14} /></button></>
+                            ) : (<button onClick={() => setShowLogin(true)} className="text-gray-600 hover:text-hlzPurple" title="Login Admin"><Lock size={14} /></button>)}
                             <span className="text-[10px] text-gray-700">|</span>
                             <button onClick={() => setLang('fr')} className={`px-2 py-0.5 text-[10px] font-bold border ${lang === 'fr' ? 'bg-hlzPurple text-black border-hlzPurple' : 'bg-black text-gray-500 border-gray-800'}`}>FR</button>
                             <button onClick={() => setLang('en')} className={`px-2 py-0.5 text-[10px] font-bold border ${lang === 'en' ? 'bg-hlzPurple text-black border-hlzPurple' : 'bg-black text-gray-500 border-gray-800'}`}>EN</button>
@@ -413,16 +314,14 @@ const App = () => {
                                 <span className="block">Habiter<br />la Zone</span>
                                 {session ? <span className="text-[10px] text-green-400 border border-green-400 px-1 bg-green-400/10 tracking-normal font-normal self-center translate-y-[-2px] flex items-center gap-1"><Unlock size={10}/> ADMIN</span> : <span className="text-[10px] text-hlzPurple border border-hlzPurple px-1 bg-hlzPurple/10 tracking-normal font-normal self-center translate-y-[-2px]">SYS.ONLINE</span>}
                             </h1>
-                            <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">{t.subtitle}</p>
                         </div>
                     </div>
                     
                     <div className="relative mb-4 group mt-4">
                         <input type="text" placeholder={t.searchPlaceholder} className="w-full industrial-input p-2 pl-8 text-sm focus:border-hlzPurple transition-colors" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                        <div className="absolute left-2 top-2.5 text-gray-500 group-focus-within:text-hlzPurple transition-colors"><Search size={14} /></div>
+                        <div className="absolute left-2 top-2.5 text-gray-500"><Search size={14} /></div>
                     </div>
 
-                    {/* FILTROS E SUBFILTROS */}
                     <div className="flex flex-col gap-2 mb-2 max-h-[250px] overflow-y-auto overflow-x-hidden pr-2">
                         <div className="flex flex-wrap gap-2">
                             {Object.keys(currentHierarchy).map(parentTag => {
@@ -434,18 +333,7 @@ const App = () => {
                                     </button>
                                 );
                             })}
-                            
-                            {customTags.map(tag => {
-                                const color = getDerivedTagColor(tag);
-                                const isActive = activeParentFilter === tag;
-                                return (
-                                    <button key={tag} onClick={() => toggleParentFilter(tag)} style={{ borderColor: isActive ? color : '#333', color: isActive ? '#000' : color, backgroundColor: isActive ? color : 'transparent' }} className={`text-[10px] px-2 py-1 border transition-all uppercase hover:border-white`}>
-                                        #{tag}
-                                    </button>
-                                );
-                            })}
                         </div>
-
                         {activeParentFilter && currentHierarchy[activeParentFilter]?.children.length > 0 && (
                             <div className="flex flex-wrap gap-2 p-3 mt-1 ml-2 border-l-2 bg-[#050505]" style={{ borderColor: currentHierarchy[activeParentFilter].color }}>
                                 {currentHierarchy[activeParentFilter].children.map(childTag => {
@@ -463,9 +351,7 @@ const App = () => {
                     
                     <div className="flex justify-between items-center h-4 mb-3">
                         <span className="text-[9px] text-gray-600">{t.selectHint}</span>
-                        {(activeParentFilter || searchQuery) && (
-                            <button onClick={() => { setActiveParentFilter(null); setActiveSubFilters([]); setSearchQuery(""); }} className="text-[10px] text-gray-500 underline decoration-hlzPurple hover:text-white">{t.clear}</button>
-                        )}
+                        {(activeParentFilter || searchQuery) && <button onClick={() => { setActiveParentFilter(null); setActiveSubFilters([]); setSearchQuery(""); }} className="text-[10px] text-gray-500 underline">{t.clear}</button>}
                     </div>
 
                     <div className="flex justify-between items-center pt-3 border-t border-gray-800">
@@ -490,58 +376,39 @@ const App = () => {
                         {timelineMemories.map(mem => {
                             const isExpanded = selectedMemory?.id === mem.id;
                             const displayDate = formatDateTime(mem.date, lang);
-
                             return (
-                                <div key={mem.id} ref={el => timelineRefs.current[mem.id] = el} onClick={() => handleSelectMemory(mem)} className={`bg-[#050505] border transition-all duration-300 cursor-pointer group ${isExpanded ? 'border-hlzPurple shadow-[0_0_15px_rgba(166,33,255,0.15)]' : 'border-gray-800 hover:border-gray-600'}`}>
+                                <div key={mem.id} ref={el => timelineRefs.current[mem.id] = el} onClick={() => handleSelectMemory(mem)} className={`bg-[#050505] border transition-all duration-300 cursor-pointer group ${isExpanded ? 'border-hlzPurple' : 'border-gray-800'}`}>
                                     <div className="p-3">
                                         <div className="flex justify-between items-start mb-2">
-                                            <h4 className={`text-sm font-bold pr-2 transition-colors ${isExpanded ? 'text-hlzPurple whitespace-normal' : 'text-white truncate group-hover:text-hlzPurple'}`}>{mem.title}</h4>
+                                            <h4 className={`text-sm font-bold pr-2 transition-colors ${isExpanded ? 'text-hlzPurple' : 'text-white'}`}>{mem.title}</h4>
                                             <span className="text-[9px] text-gray-500 whitespace-nowrap pt-1 bg-gray-900 px-1">{displayDate}</span>
                                         </div>
                                         {!isExpanded && (
                                             <div className="flex flex-wrap gap-1">
                                                 {mem.tags && mem.tags.slice(0, 4).map(tag => (<span key={tag} style={{ borderColor: getDerivedTagColor(tag), color: getDerivedTagColor(tag) }} className="text-[8px] px-1 border uppercase opacity-70">#{tag}</span>))}
-                                                {mem.tags && mem.tags.length > 4 && <span className="text-[8px] text-gray-600">+{mem.tags.length - 4}</span>}
                                             </div>
                                         )}
                                     </div>
-
                                     {isExpanded && (
                                         <div className="px-3 pb-3 border-t border-gray-900 bg-black/40 fade-in">
                                             <div className="my-3 border border-gray-800 relative flex items-center justify-center overflow-hidden bg-black min-h-[150px]">
-                                                {mem.type === 'photo' && mem.content && <img src={mem.content} alt={mem.title} onClick={() => setFullScreenItem({ type: 'photo', src: mem.content })} className="w-full h-auto max-h-[300px] object-contain grayscale hover:grayscale-0 transition-all duration-500 cursor-pointer" title="Clique pour agrandir"/>}
-                                                {mem.type === 'video' && mem.content && (
-                                                    <div className="relative w-full cursor-pointer group" onClick={() => setFullScreenItem({ type: 'video', src: mem.content })}>
-                                                        <video src={mem.content} className="w-full h-auto max-h-[300px] object-contain opacity-70 group-hover:opacity-100 transition-opacity"></video>
-                                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><span className="bg-hlzPurple text-black text-[10px] font-bold px-3 py-1 uppercase tracking-widest">▶ Play</span></div>
-                                                    </div>
-                                                )}
-                                                {mem.type === 'audio' && <div className="p-4 w-full flex flex-col items-center justify-center"><Mic size={24} color="#A621FF" className="mb-2" /><audio src={mem.content} controls className="w-full h-8 opacity-80" /></div>}
+                                                {mem.type === 'photo' && mem.content && <img src={mem.content} onClick={() => setFullScreenItem({ type: 'photo', src: mem.content })} className="w-full h-auto max-h-[300px] object-contain grayscale hover:grayscale-0 cursor-pointer"/>}
+                                                {mem.type === 'video' && mem.content && <div className="relative w-full cursor-pointer group" onClick={() => setFullScreenItem({ type: 'video', src: mem.content })}><video src={mem.content} className="w-full h-auto max-h-[300px] object-contain opacity-70"></video><span className="absolute inset-0 flex items-center justify-center text-hlzPurple">▶</span></div>}
+                                                {mem.type === 'audio' && <div className="p-4 w-full flex flex-col items-center justify-center"><Mic size={24} color="#A621FF" className="mb-2" /><audio src={mem.content} controls className="w-full h-8" /></div>}
                                                 {mem.type === 'text' && <FileText size={32} color="#555" />}
                                             </div>
-
                                             {mem.description && <p className="text-xs text-gray-400 leading-relaxed mb-3 border-l-2 border-hlzPurple pl-3 text-justify">{mem.description}</p>}
-
                                             <div className="flex flex-wrap gap-1.5 mb-3">
-                                                {mem.tags && mem.tags.map(tag => (<span key={tag} style={{color: getDerivedTagColor(tag), borderColor: getDerivedTagColor(tag)}} className="text-[9px] px-1.5 py-0.5 border border-opacity-40 bg-opacity-10 bg-white uppercase tracking-wider">#{tag}</span>))}
+                                                {mem.tags && mem.tags.map(tag => (<span key={tag} style={{color: getDerivedTagColor(tag), borderColor: getDerivedTagColor(tag)}} className="text-[9px] px-1.5 py-0.5 border bg-white bg-opacity-10 uppercase">#{tag}</span>))}
                                             </div>
-                                            
                                             <div className="flex items-center justify-between border-t border-gray-900 pt-2 mt-2">
-                                                <div className="flex items-center text-[9px] text-gray-600 font-mono gap-1"><Crosshair size={10} /><span>{mem.lat.toFixed(4)} ; {mem.lng.toFixed(4)}</span></div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[8px] text-gray-600 uppercase">{t.directionView}</span>
-                                                    <div className="relative w-6 h-6 flex items-center justify-center border border-[#1e2029] bg-[#0a0a0c] rounded-full overflow-hidden">
-                                                        <svg width="24" height="24" viewBox="0 0 48 48" style={{ position: 'absolute', transform: `rotate(${mem.direction || 0}deg)` }}><path d="M24,24 L6,4 A26,26 0 0,1 42,4 Z" fill="#A621FF" /></svg>
-                                                        <div className="absolute w-1.5 h-1.5 bg-white transform rotate-45 z-10 shadow-[0_0_5px_rgba(255,255,255,0.8)]"></div>
-                                                    </div>
-                                                </div>
+                                                <div className="flex items-center text-[9px] text-gray-600 font-mono gap-1"><Crosshair size={10} /><span>{mem.lat.toFixed(4)};{mem.lng.toFixed(4)}</span></div>
                                             </div>
-
                                             {session && (
                                                 <div className="flex justify-end gap-3 mt-4 pt-3 border-t border-gray-800">
-                                                    <button onClick={(e) => handleEditClick(mem, e)} className="text-gray-400 hover:text-blue-400 flex items-center gap-1 text-[10px] uppercase tracking-widest transition-colors"><Edit size={12}/> {t.edit}</button>
-                                                    <button onClick={(e) => handleDuplicateClick(mem, e)} className="text-gray-400 hover:text-green-400 flex items-center gap-1 text-[10px] uppercase tracking-widest transition-colors"><Copy size={12}/> {t.duplicate}</button>
-                                                    <button onClick={(e) => handleDeleteMemory(mem.id, e)} className="text-gray-400 hover:text-red-500 flex items-center gap-1 text-[10px] uppercase tracking-widest transition-colors"><Trash2 size={12}/> {t.delete}</button>
+                                                    <button onClick={(e) => handleEditClick(mem, e)} className="text-gray-400 hover:text-blue-400 flex items-center gap-1 text-[10px] uppercase"><Edit size={12}/> {t.edit}</button>
+                                                    <button onClick={(e) => handleDuplicateClick(mem, e)} className="text-gray-400 hover:text-green-400 flex items-center gap-1 text-[10px] uppercase"><Copy size={12}/> {t.duplicate}</button>
+                                                    <button onClick={(e) => handleDeleteMemory(mem.id, e)} className="text-gray-400 hover:text-red-500 flex items-center gap-1 text-[10px] uppercase"><Trash2 size={12}/> {t.delete}</button>
                                                 </div>
                                             )}
                                         </div>
@@ -553,7 +420,7 @@ const App = () => {
                 </div>
             </div>
 
-            {/* MODAL DE GERENCIAMENTO DE TAGS (ADMIN COM SELECT FÁCIL) */}
+            {/* GERENCIAMENTO DE TAGS ADMIN */}
             {showTagManager && session && (
                 <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                     <div className="industrial-panel p-6 w-full max-w-md shadow-[0_0_50px_rgba(166,33,255,0.2)] border-hlzPurple fade-in">
@@ -563,24 +430,42 @@ const App = () => {
                         </div>
                         
                         <div className="max-h-[40vh] overflow-y-auto mb-6 space-y-2 pr-2">
-                            {dbTags.map(tag => {
-                                const isChild = !!tag.parent_name;
+                            {/* Renderiza Pais Primeiro */}
+                            {allParentOptions.map(parentName => {
+                                const parentData = currentHierarchy[parentName];
+                                const parentDbTag = dbTags.find(t => t.name.toLowerCase() === parentName && !t.parent_name);
+                                const isCustomParent = !!parentDbTag;
+
                                 return (
-                                <div key={tag.id} className={`flex justify-between items-center bg-[#050505] border p-2 transition-colors ${editingTagId === tag.id ? 'border-hlzPurple' : 'border-gray-800 hover:border-gray-600'} ${isChild ? 'ml-6 border-l-2 border-gray-500' : ''}`}>
-                                    <div className="flex items-center gap-3">
-                                        {!isChild && <div className="w-4 h-4 rounded-full border border-gray-500" style={{ backgroundColor: tag.color }}></div>}
-                                        <div className="flex flex-col">
-                                            <span className={`text-sm uppercase tracking-wider ${isChild ? 'text-gray-400' : 'text-white font-bold'}`}>#{tag.name}</span>
-                                            {isChild && <span className="text-[8px] text-gray-600 uppercase">Filho de: #{tag.parent_name}</span>}
+                                <React.Fragment key={`group-${parentName}`}>
+                                    <div className="flex justify-between items-center bg-[#111] border border-gray-700 p-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-4 h-4 rounded-full border border-gray-500" style={{ backgroundColor: parentData.color }}></div>
+                                            <span className="text-sm uppercase font-bold text-white">#{parentName}</span>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            {isCustomParent ? (
+                                                <>
+                                                    <button onClick={() => handleEditTagClick(parentDbTag)} className="text-gray-500 hover:text-blue-400"><Edit size={14}/></button>
+                                                    <button onClick={() => handleDeleteTag(parentDbTag.id)} className="text-gray-500 hover:text-red-500"><Trash2 size={14}/></button>
+                                                </>
+                                            ) : (
+                                                <span className="text-[8px] text-gray-500 uppercase">Tag Fixa</span>
+                                            )}
                                         </div>
                                     </div>
-                                    <div className="flex gap-3">
-                                        <button onClick={() => handleEditTagClick(tag)} className="text-gray-500 hover:text-blue-400 transition-colors"><Edit size={14}/></button>
-                                        <button onClick={() => handleDeleteTag(tag.id)} className="text-gray-500 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
-                                    </div>
-                                </div>
+                                    {/* Renderiza Filhos daquele Pai */}
+                                    {dbTags.filter(child => child.parent_name?.toLowerCase() === parentName).map(child => (
+                                        <div key={child.id} className="flex justify-between items-center bg-[#050505] p-2 ml-6 border-l-2 border-gray-500">
+                                            <span className="text-sm uppercase text-gray-400">↳ {child.name}</span>
+                                            <div className="flex gap-3">
+                                                <button onClick={() => handleEditTagClick(child)} className="text-gray-500 hover:text-blue-400"><Edit size={14}/></button>
+                                                <button onClick={() => handleDeleteTag(child.id)} className="text-gray-500 hover:text-red-500"><Trash2 size={14}/></button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </React.Fragment>
                             )})}
-                            {dbTags.length === 0 && <p className="text-xs text-gray-500">Aucun tag personnalisé trouvé.</p>}
                         </div>
 
                         <div className="border-t border-gray-800 pt-4 bg-[#0a0a0a] -mx-6 -mb-6 p-6">
@@ -588,23 +473,22 @@ const App = () => {
                             <div className="flex flex-col gap-3">
                                 <div className="flex gap-2 items-center">
                                     <input type="text" placeholder={t.tagName} className="flex-1 industrial-input p-2 text-sm" value={newTagName} onChange={e => setNewTagName(e.target.value)} />
-                                    {newTagParentName === "" && <input type="color" className="w-10 h-10 bg-transparent cursor-pointer border-0 p-0" value={newTagColor} onChange={e => setNewTagColor(e.target.value)} title={t.tagColor} />}
+                                    {newTagParentName === "" && <input type="color" className="w-10 h-10 bg-transparent cursor-pointer border-0 p-0" value={newTagColor} onChange={e => setNewTagColor(e.target.value)} />}
                                 </div>
                                 <div className="flex gap-2 items-center">
-                                    {/* MENU DROPDOWN LISTANDO AS CATEGORIAS DO CÓDIGO */}
                                     <select className="flex-1 industrial-input p-2 text-xs text-gray-400" value={newTagParentName} onChange={(e) => setNewTagParentName(e.target.value)}>
-                                        <option value="">[ Tag Independente ]</option>
-                                        {Object.keys(BASE_HIERARCHY).map(parent => (
-                                            <option key={parent} value={parent}>Subcategoria de: #{parent}</option>
+                                        <option value="">[ Nova Categoria Principal ]</option>
+                                        {allParentOptions.map(parent => (
+                                            <option key={`opt-${parent}`} value={parent}>Subtag de: #{parent}</option>
                                         ))}
                                     </select>
                                     {editingTagId ? (
                                         <div className="flex gap-1">
-                                            <button onClick={handleSaveTag} className="bg-hlzPurple text-black font-bold px-3 py-2 uppercase text-[10px] hover:bg-white transition-colors">{t.save}</button>
-                                            <button onClick={handleCancelTagEdit} className="bg-gray-800 text-gray-400 font-bold px-3 py-2 uppercase text-[10px] hover:bg-gray-700 transition-colors"><X size={14}/></button>
+                                            <button onClick={handleSaveTag} className="bg-hlzPurple text-black font-bold px-3 py-2 text-[10px] uppercase">Salvar</button>
+                                            <button onClick={handleCancelTagEdit} className="bg-gray-800 text-gray-400 font-bold px-3 py-2"><X size={14}/></button>
                                         </div>
                                     ) : (
-                                        <button onClick={handleSaveTag} className="bg-hlzPurple text-black font-bold px-4 py-2 uppercase text-[10px] hover:bg-white transition-colors">{t.addTag}</button>
+                                        <button onClick={handleSaveTag} className="bg-hlzPurple text-black font-bold px-4 py-2 text-[10px] uppercase">Add</button>
                                     )}
                                 </div>
                             </div>
@@ -618,108 +502,53 @@ const App = () => {
                     <div className="industrial-panel p-6 w-full max-w-sm shadow-[0_0_50px_rgba(166,33,255,0.2)] border-hlzPurple fade-in">
                         <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-2">
                             <h2 className="text-xl font-bold text-white uppercase flex items-center gap-2"><Lock size={18}/> {t.login}</h2>
-                            <button onClick={() => setShowLogin(false)} className="text-gray-500 hover:text-hlzPurple"><X /></button>
+                            <button onClick={() => setShowLogin(false)} className="text-gray-500"><X /></button>
                         </div>
                         <form onSubmit={handleLogin} className="space-y-4">
                             <input type="email" placeholder={t.email} required className="w-full industrial-input p-3" value={email} onChange={e => setEmail(e.target.value)} />
                             <input type="password" placeholder={t.password} required className="w-full industrial-input p-3" value={password} onChange={e => setPassword(e.target.value)} />
-                            <button type="submit" className="w-full bg-hlzPurple hover:bg-white hover:text-black text-black font-bold py-3 uppercase tracking-widest transition-all">{t.enter}</button>
+                            <button type="submit" className="w-full bg-hlzPurple text-black font-bold py-3 uppercase">Entrar</button>
                         </form>
                     </div>
                 </div>
             )}
 
-            {/* NOUVEAU SIGNAL - COM O SELETOR VISUAL DA CASCATA PERFEITA */}
             {isAdding && session && (
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[1100] w-11/12 max-w-md">
                     <div className="industrial-panel p-6 shadow-[0_0_50px_rgba(0,0,0,0.9)] border-hlzPurple">
                         <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-2">
                             <h2 className="text-xl font-bold text-white uppercase">{editingId ? t.editSignal : t.newSignal}</h2>
-                            <button onClick={closeModal} className="text-gray-500 hover:text-hlzPurple"><X /></button>
+                            <button onClick={closeModal} className="text-gray-500"><X /></button>
                         </div>
                         <div className="space-y-4">
                             <input type="text" placeholder={t.idPlace} className="w-full industrial-input p-3" value={newMemory.title} onChange={e => setNewMemory({...newMemory, title: e.target.value})} />
-                            
                             <div className="flex gap-4">
-                                <div className="flex-1 flex flex-col gap-1">
-                                    <label className="text-[10px] text-gray-500 uppercase tracking-widest">{t.lat}</label>
-                                    <input type="number" step="any" className="w-full industrial-input p-2 text-sm" value={newMemory.lat} onChange={e => setNewMemory({...newMemory, lat: e.target.value})} />
-                                </div>
-                                <div className="flex-1 flex flex-col gap-1">
-                                    <label className="text-[10px] text-gray-500 uppercase tracking-widest">{t.lng}</label>
-                                    <input type="number" step="any" className="w-full industrial-input p-2 text-sm" value={newMemory.lng} onChange={e => setNewMemory({...newMemory, lng: e.target.value})} />
-                                </div>
+                                <div className="flex-1 flex flex-col gap-1"><label className="text-[10px] text-gray-500 uppercase">{t.lat}</label><input type="number" step="any" className="w-full industrial-input p-2 text-sm" value={newMemory.lat} onChange={e => setNewMemory({...newMemory, lat: e.target.value})} /></div>
+                                <div className="flex-1 flex flex-col gap-1"><label className="text-[10px] text-gray-500 uppercase">{t.lng}</label><input type="number" step="any" className="w-full industrial-input p-2 text-sm" value={newMemory.lng} onChange={e => setNewMemory({...newMemory, lng: e.target.value})} /></div>
                             </div>
-
-                            <div className="flex flex-col gap-1">
-                                <label className="text-[10px] text-gray-500 uppercase tracking-widest">{t.dateTimeStr}</label>
-                                <input type="datetime-local" className="w-full industrial-input p-2 text-sm" value={newMemory.datetime} onChange={e => setNewMemory({...newMemory, datetime: e.target.value})} />
-                            </div>
-
                             <div className="flex gap-2">
                                 {['text', 'photo', 'video', 'audio'].map(type => (
-                                    <button key={type} onClick={() => setNewMemory({...newMemory, type})} className={`flex-1 py-1 text-[10px] uppercase border transition-colors ${newMemory.type === type ? 'bg-hlzPurple text-black border-hlzPurple font-bold' : 'border-gray-700 text-gray-500 hover:border-hlzPurple'}`}>{t.types[type]}</button>
+                                    <button key={type} onClick={() => setNewMemory({...newMemory, type})} className={`flex-1 py-1 text-[10px] uppercase border ${newMemory.type === type ? 'bg-hlzPurple text-black border-hlzPurple font-bold' : 'border-gray-700 text-gray-500'}`}>{t.types[type]}</button>
                                 ))}
                             </div>
-                            <div className="flex justify-between items-center bg-[#050505] border border-gray-800 p-3">
-                                <div className="flex items-center gap-4">
-                                    <span className="text-xs text-gray-500 uppercase">{t.directionView}:</span>
-                                    <div className="relative w-12 h-12 flex items-center justify-center border-2 border-[#1e2029] bg-[#0a0a0c] rounded-full overflow-hidden shadow-[0_0_15px_rgba(166,33,255,0.1)]">
-                                        <svg width="48" height="48" viewBox="0 0 48 48" style={{ position: 'absolute', transform: `rotate(${newMemory.direction || 0}deg)`, transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}><path d="M24,24 L6,4 A26,26 0 0,1 42,4 Z" fill="rgba(166, 33, 255, 0.6)" stroke="#D8B4FE" strokeWidth="1.5" /></svg>
-                                        <div className="absolute w-3 h-3 bg-white transform rotate-45 z-10 shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
-                                    </div>
-                                </div>
-                                <div className="flex gap-1">
-                                    {[{v: 0, l: '↑'}, {v: 90, l: '→'}, {v: 180, l: '↓'}, {v: 270, l: '←'}].map(dir => (
-                                        <button key={dir.v} onClick={() => setNewMemory({...newMemory, direction: dir.v})} className={`w-8 h-8 flex items-center justify-center border text-sm transition-colors ${newMemory.direction === dir.v ? 'bg-hlzPurple text-black border-hlzPurple' : 'border-gray-700 text-gray-500 hover:border-hlzPurple hover:text-white'}`}>{dir.l}</button>
-                                    ))}
-                                </div>
-                            </div>
-                            <textarea placeholder={t.notes} className="w-full industrial-input p-3 h-24 resize-none" value={newMemory.description} onChange={e => setNewMemory({...newMemory, description: e.target.value})}></textarea>
+                            <textarea placeholder={t.notes} className="w-full industrial-input p-3 h-20 resize-none" value={newMemory.description} onChange={e => setNewMemory({...newMemory, description: e.target.value})}></textarea>
                             <input type="text" placeholder={t.mediaUrl} className="w-full industrial-input p-3 text-xs" value={newMemory.content} onChange={e => setNewMemory({...newMemory, content: e.target.value})} />
                             
-                            {/* --- SELETOR VISUAL DINÂMICO PARA CADASTRAR O SINAL --- */}
                             <div className="w-full industrial-input p-3 space-y-3 bg-[#050505]">
-                                <span className="text-[10px] text-gray-500 uppercase tracking-widest block">{t.context} / Tags</span>
-                                <div className="max-h-[150px] overflow-y-auto pr-2 space-y-3">
+                                <span className="text-[10px] text-gray-500 uppercase block">Tags</span>
+                                <div className="max-h-[120px] overflow-y-auto pr-2 space-y-3">
                                     {Object.entries(currentHierarchy).map(([parent, data]) => (
                                         <div key={parent} className="border-l-2 pl-2" style={{ borderColor: data.color }}>
                                             <button 
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    const currentTags = newMemory.tags ? newMemory.tags.split(',').map(t=>t.trim()).filter(Boolean) : [];
-                                                    const newTags = currentTags.includes(parent) ? currentTags.filter(t=>t!==parent) : [...currentTags, parent];
-                                                    setNewMemory({...newMemory, tags: newTags.join(', ')});
-                                                }}
-                                                className={`text-[10px] px-2 py-0.5 border uppercase font-bold transition-colors mb-1`}
-                                                style={{ 
-                                                    backgroundColor: newMemory.tags?.split(',').map(t=>t.trim()).includes(parent) ? data.color : 'transparent',
-                                                    borderColor: data.color,
-                                                    color: newMemory.tags?.split(',').map(t=>t.trim()).includes(parent) ? '#000' : data.color
-                                                }}
-                                            >
-                                                #{parent}
-                                            </button>
+                                                onClick={(e) => { e.preventDefault(); const tgs = newMemory.tags ? newMemory.tags.split(',').map(t=>t.trim()).filter(Boolean) : []; setNewMemory({...newMemory, tags: (tgs.includes(parent) ? tgs.filter(t=>t!==parent) : [...tgs, parent]).join(', ')}); }}
+                                                className={`text-[10px] px-2 py-0.5 border uppercase font-bold mb-1`}
+                                                style={{ backgroundColor: newMemory.tags?.split(',').map(t=>t.trim()).includes(parent) ? data.color : 'transparent', borderColor: data.color, color: newMemory.tags?.split(',').map(t=>t.trim()).includes(parent) ? '#000' : data.color }}
+                                            >#{parent}</button>
                                             <div className="flex flex-wrap gap-1 ml-2">
                                                 {data.children.map(child => {
-                                                    const isSelected = newMemory.tags?.split(',').map(t=>t.trim()).includes(child);
+                                                    const isSel = newMemory.tags?.split(',').map(t=>t.trim()).includes(child);
                                                     return (
-                                                    <button 
-                                                        key={child}
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            const currentTags = newMemory.tags ? newMemory.tags.split(',').map(t=>t.trim()).filter(Boolean) : [];
-                                                            if (!currentTags.includes(child) && !currentTags.includes(parent)) currentTags.push(parent);
-                                                            const newTags = currentTags.includes(child) ? currentTags.filter(t=>t!==child) : [...currentTags, child];
-                                                            setNewMemory({...newMemory, tags: newTags.join(', ')});
-                                                        }}
-                                                        className={`text-[9px] px-1.5 py-0.5 border uppercase transition-colors`}
-                                                        style={{ 
-                                                            backgroundColor: isSelected ? data.color : 'transparent',
-                                                            borderColor: isSelected ? data.color : '#333',
-                                                            color: isSelected ? '#000' : '#888'
-                                                        }}
-                                                    >
+                                                    <button key={child} onClick={(e) => { e.preventDefault(); const tgs = newMemory.tags ? newMemory.tags.split(',').map(t=>t.trim()).filter(Boolean) : []; if (!tgs.includes(child) && !tgs.includes(parent)) tgs.push(parent); setNewMemory({...newMemory, tags: (tgs.includes(child) ? tgs.filter(t=>t!==child) : [...tgs, child]).join(', ')}); }} className={`text-[9px] px-1.5 py-0.5 border uppercase`} style={{ backgroundColor: isSel ? data.color : 'transparent', borderColor: isSel ? data.color : '#333', color: isSel ? '#000' : '#888' }}>
                                                         {child}
                                                     </button>
                                                 )})}
@@ -727,34 +556,23 @@ const App = () => {
                                         </div>
                                     ))}
                                 </div>
-                                <input type="text" placeholder="Ou digite tags extra (separadas por vírgula)..." className="w-full bg-transparent border-t border-gray-800 pt-2 text-xs text-gray-400 focus:outline-none" value={newMemory.tags} onChange={e => setNewMemory({...newMemory, tags: e.target.value})} />
+                                <input type="text" placeholder="Tags manuais (vírgula)..." className="w-full bg-transparent border-t border-gray-800 pt-2 text-xs focus:outline-none" value={newMemory.tags} onChange={e => setNewMemory({...newMemory, tags: e.target.value})} />
                             </div>
 
-                            <button onClick={handleSaveMemory} className="w-full bg-hlzPurple hover:bg-white hover:text-black text-black font-bold py-3 uppercase tracking-widest transition-all">{t.save}</button>
+                            <button onClick={handleSaveMemory} className="w-full bg-hlzPurple text-black font-bold py-3 uppercase">Salvar Ponto</button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {aboutTab && (
-                <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                    <div className="industrial-panel p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto fade-in shadow-[0_0_50px_rgba(166,33,255,0.2)] border-hlzPurple">
-                        <div className="flex justify-between items-start mb-6 border-b border-gray-800 pb-4">
-                            <div>
-                                <div className="flex items-center gap-2 mb-2"><span className="w-1.5 h-1.5 bg-hlzPurple animate-pulse"></span><p className="text-hlzPurple text-[10px] tracking-widest font-bold uppercase">INFO SYS</p></div>
-                                <h2 className="text-3xl font-bold text-white uppercase leading-none tracking-tight">{aboutTab === 'project' ? t.aboutTitle : t.authorTitle}</h2>
-                            </div>
-                            <button onClick={() => setAboutTab(null)} className="text-gray-600 hover:text-white transition-colors"><X size={24}/></button>
-                        </div>
-                        <div className="flex gap-6 mb-8 border-b border-gray-800">
-                            <button onClick={() => setAboutTab('project')} className={`pb-2 text-sm font-bold uppercase tracking-widest transition-colors ${aboutTab === 'project' ? 'text-hlzPurple border-b-2 border-hlzPurple' : 'text-gray-500 hover:text-gray-300'}`}>{t.aboutTitle}</button>
-                            <button onClick={() => setAboutTab('author')} className={`pb-2 text-sm font-bold uppercase tracking-widest transition-colors ${aboutTab === 'author' ? 'text-hlzPurple border-b-2 border-hlzPurple' : 'text-gray-500 hover:text-gray-300'}`}>{t.authorTitle}</button>
-                        </div>
-                        <div className="space-y-8 flex-1">
-                            {aboutTab === 'project' && (
-                                <div className="fade-in grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div>
-                                        <h3 className="text-xl font-bold text-white uppercase mb-4 border-l-2 border-hlzPurple pl-3">{t.aboutProjectTitle}</h3>
-                                        <p className="text-sm text-gray-400 leading-relaxed text-justify font-light">{t.aboutProjectDesc}</p>
-                                    </div>
-                                    <div className="bg-black border border-gray-800 relative group
+            {fullScreenItem && (
+                <div className="fixed inset-0 z-[3000] bg-black/95 flex items-center justify-center p-4 fade-in" onClick={() => setFullScreenItem(null)}>
+                    <button className="absolute top-6 right-6 text-gray-400 bg-black/50 p-2 rounded-full"><X size={32} /></button>
+                    {fullScreenItem.type === 'photo' ? <img src={fullScreenItem.src} className="max-w-full max-h-full object-contain" onClick={(e) => e.stopPropagation()} /> : <video src={fullScreenItem.src} controls autoPlay className="max-w-full max-h-full" onClick={(e) => e.stopPropagation()}></video>}
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default App;
