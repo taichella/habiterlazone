@@ -6,19 +6,6 @@ import { supabase } from './supabase';
 
 const PALETTE = { purple: '#A621FF', neutralBg: '#0A0A0A' };
 
-// --- HIERARQUIA DE FILTROS E CORES ---
-const FILTER_HIERARCHY = {
-    "art": { color: "#FF3366", children: ["intervention urbaine", "performance", "archives visuelles", "paysage sonore"] },
-    "chat": { color: "#33CCFF", children: ["entretiens", "récits", "débats", "informel"] },
-    "films": { color: "#FF9933", children: ["courts-métrages", "images d'archives", "making of"] },
-    "genre": { color: "#CC33FF", children: ["travail féminin", "maternité et lutte", "corps et espace", "masculinités"] },
-    "habitat": { color: "#33FF99", children: ["campements", "convivialité", "précarité", "quotidien"] },
-    "terrain": { color: "#FFFF33", children: ["ruines", "infrastructures", "exploration"] },
-    "territoire / paysage": { color: "#FF33CC", children: ["grands chantiers", "nature vs machine", "frontières", "atmosphère"] },
-    "travail": { color: "#FF3333", children: ["usine", "zones d'exploitation", "grèves", "gestes"] },
-    "vidéos": { color: "#3366FF", children: ["b-roll", "timelapse", "caméra en mouvement"] }
-};
-
 const TRANSLATIONS = {
     fr: {
         subtitle: "Journal de terrain(s)", searchPlaceholder: "Rechercher (lieu, tag)...",
@@ -88,7 +75,6 @@ const App = () => {
     
     const [memories, setMemories] = useState([]);
     const [dbTags, setDbTags] = useState([]); 
-    const [filteredMemories, setFilteredMemories] = useState([]);
     const [selectedMemory, setSelectedMemory] = useState(null);
     const [aboutTab, setAboutTab] = useState(null);
     const [mapStyle, setMapStyle] = useState('dark');
@@ -111,6 +97,7 @@ const App = () => {
     const [showTagManager, setShowTagManager] = useState(false);
     const [newTagName, setNewTagName] = useState("");
     const [newTagColor, setNewTagColor] = useState("#A621FF");
+    const [newTagParentId, setNewTagParentId] = useState(""); // NOVO ESTADO: Guarda quem é o pai da tag que está sendo criada
     const [editingTagId, setEditingTagId] = useState(null);
 
     const mapRef = useRef(null);
@@ -120,12 +107,44 @@ const App = () => {
     const linesRef = useRef([]);
     const timelineRefs = useRef({});
 
+    // --- CÉREBRO DINÂMICO DA HIERARQUIA ---
+    // Transforma a lista plana do banco de dados em uma árvore organizada de pais e filhos
+    const dynamicHierarchy = useMemo(() => {
+        const hierarchy = {};
+        
+        // 1. Encontra todos os "Pais" (Tags onde parent_id é null ou vazio)
+        dbTags.filter(tag => !tag.parent_id).forEach(parent => {
+            hierarchy[parent.name.toLowerCase()] = {
+                id: parent.id,
+                color: parent.color,
+                children: []
+            };
+        });
+
+        // 2. Encontra todos os "Filhos" e aloca dentro dos respectivos pais
+        dbTags.filter(tag => tag.parent_id).forEach(child => {
+            const parent = dbTags.find(p => p.id === child.parent_id);
+            if (parent && hierarchy[parent.name.toLowerCase()]) {
+                hierarchy[parent.name.toLowerCase()].children.push(child.name.toLowerCase());
+            }
+        });
+
+        return hierarchy;
+    }, [dbTags]);
+
+    // Busca a cor inteligente (Herdando do pai se for subcategoria)
     const getDerivedTagColor = (tagName) => {
         const lowerTag = tagName.toLowerCase();
-        if (FILTER_HIERARCHY[lowerTag]) return FILTER_HIERARCHY[lowerTag].color;
-        for (const [parent, data] of Object.entries(FILTER_HIERARCHY)) {
+        
+        // É um pai principal?
+        if (dynamicHierarchy[lowerTag]) return dynamicHierarchy[lowerTag].color;
+        
+        // É um filho? Procura qual é o pai dele e pega a cor
+        for (const [parentName, data] of Object.entries(dynamicHierarchy)) {
             if (data.children.includes(lowerTag)) return data.color;
         }
+        
+        // É uma tag avulsa sem pai? Busca direto do banco de dados
         const dbTag = dbTags.find(t => t.name.toLowerCase() === lowerTag);
         return dbTag ? dbTag.color : '#FFFFFF'; 
     };
@@ -141,7 +160,8 @@ const App = () => {
             const { data: mData } = await supabase.from('markers').select('*');
             if (mData) setMemories(mData);
 
-            const { data: tData } = await supabase.from('tags').select('*');
+            // Fetch tags, garantindo que a nova coluna parent_id venha junto
+            const { data: tData } = await supabase.from('tags').select('id, name, color, parent_id');
             if (tData) setDbTags(tData);
         };
         fetchData();
@@ -166,11 +186,11 @@ const App = () => {
         }
     }, [selectedMemory]);
 
-    useEffect(() => {
+    const filteredMemories = useMemo(() => {
         let result = memories;
         
         if (activeParentFilter) {
-            const parentData = FILTER_HIERARCHY[activeParentFilter];
+            const parentData = dynamicHierarchy[activeParentFilter];
             const validTagsForParent = [activeParentFilter, ...(parentData?.children || [])];
 
             if (activeSubFilters.length > 0) {
@@ -188,8 +208,8 @@ const App = () => {
                 (m.tags && m.tags.some(t => t.toLowerCase().includes(query)))
             );
         }
-        setFilteredMemories(result);
-    }, [memories, activeParentFilter, activeSubFilters, searchQuery]);
+        return result;
+    }, [memories, activeParentFilter, activeSubFilters, searchQuery, dynamicHierarchy]);
 
     const timelineMemories = useMemo(() => [...filteredMemories].sort((a, b) => new Date(b.date) - new Date(a.date)), [filteredMemories]);
 
@@ -300,7 +320,7 @@ const App = () => {
                 }
             }
         }
-    }, [filteredMemories, selectedMemory, activeParentFilter, searchQuery, mapStyle, dbTags]); 
+    }, [filteredMemories, selectedMemory, activeParentFilter, searchQuery, mapStyle, dbTags, dynamicHierarchy]); 
 
     const closeModal = () => {
         setIsAdding(false);
@@ -357,21 +377,50 @@ const App = () => {
         }
     };
 
-    const handleEditTagClick = (tag) => { setEditingTagId(tag.id); setNewTagName(tag.name); setNewTagColor(tag.color); };
-    const handleCancelTagEdit = () => { setEditingTagId(null); setNewTagName(""); setNewTagColor("#A621FF"); };
+    const handleEditTagClick = (tag) => { 
+        setEditingTagId(tag.id); 
+        setNewTagName(tag.name); 
+        setNewTagColor(tag.color); 
+        setNewTagParentId(tag.parent_id || ""); // Carrega o pai, se houver
+    };
+    
+    const handleCancelTagEdit = () => { 
+        setEditingTagId(null); 
+        setNewTagName(""); 
+        setNewTagColor("#A621FF"); 
+        setNewTagParentId(""); // Reseta o pai
+    };
 
-    const handleSaveTag = async () => {
+const handleSaveTag = async () => {
         if (!newTagName.trim()) return;
-        const tagData = { name: newTagName.trim().toLowerCase(), color: newTagColor };
+        
+        // Conversão à prova de balas: Se o Supabase usar números, converte de String para Número
+        let formattedParentId = newTagParentId === "" ? null : newTagParentId;
+        if (formattedParentId !== null && !isNaN(formattedParentId)) {
+            formattedParentId = Number(formattedParentId);
+        }
+        
+        const tagData = { 
+            name: newTagName.trim().toLowerCase(), 
+            color: newTagColor,
+            parent_id: formattedParentId
+        };
         
         if (editingTagId) {
             const { error } = await supabase.from('tags').update(tagData).eq('id', editingTagId);
             if (error) alert("Erro ao atualizar tag: " + error.message);
-            else { setDbTags(dbTags.map(t => t.id === editingTagId ? { ...t, ...tagData } : t)); handleCancelTagEdit(); }
+            else { 
+                setDbTags(dbTags.map(t => t.id === editingTagId ? { ...t, ...tagData } : t)); 
+                handleCancelTagEdit(); 
+            }
         } else {
             const { data, error } = await supabase.from('tags').insert([tagData]).select();
             if (error) alert("Erro ao criar tag: " + error.message);
-            else { setDbTags([...dbTags, data[0]]); setNewTagName(""); }
+            else { 
+                setDbTags([...dbTags, data[0]]); 
+                setNewTagName(""); 
+                setNewTagParentId("");
+            }
         }
     };
 
@@ -399,12 +448,15 @@ const App = () => {
     const customTags = useMemo(() => {
         const allTags = new Set();
         memories.forEach(m => { if (m.tags) m.tags.forEach(t => allTags.add(t.toLowerCase())) });
-        const allHierarchyTags = Object.keys(FILTER_HIERARCHY).reduce((acc, key) => {
-            acc.push(key, ...FILTER_HIERARCHY[key].children);
+        
+        // Pega todos os nomes que estão na hierarquia dinâmica
+        const allHierarchyTags = Object.keys(dynamicHierarchy).reduce((acc, key) => {
+            acc.push(key, ...dynamicHierarchy[key].children);
             return acc;
         }, []);
+        
         return Array.from(allTags).filter(t => !allHierarchyTags.includes(t)).sort();
-    }, [memories]);
+    }, [memories, dynamicHierarchy]);
 
     return (
         <div className="relative w-full h-screen font-mono text-gray-200">
@@ -454,8 +506,8 @@ const App = () => {
 
                     <div className="flex flex-col gap-2 mb-2 max-h-[250px] overflow-y-auto overflow-x-hidden pr-2">
                         <div className="flex flex-wrap gap-2">
-                            {Object.keys(FILTER_HIERARCHY).map(parentTag => {
-                                const data = FILTER_HIERARCHY[parentTag];
+                            {Object.keys(dynamicHierarchy).map(parentTag => {
+                                const data = dynamicHierarchy[parentTag];
                                 const isActive = activeParentFilter === parentTag;
                                 return (
                                     <button 
@@ -465,7 +517,7 @@ const App = () => {
                                         className={`text-[10px] px-2 py-1 border transition-all uppercase hover:border-white font-bold flex items-center gap-1`}
                                     >
                                         #{parentTag}
-                                        {isActive && <ChevronRight size={12} className="rotate-90" />}
+                                        {isActive && data.children.length > 0 && <ChevronRight size={12} className="rotate-90" />}
                                     </button>
                                 );
                             })}
@@ -481,10 +533,10 @@ const App = () => {
                             })}
                         </div>
 
-                        {activeParentFilter && FILTER_HIERARCHY[activeParentFilter] && (
-                            <div className="flex flex-wrap gap-2 p-3 mt-1 ml-2 border-l-2 bg-[#050505]" style={{ borderColor: FILTER_HIERARCHY[activeParentFilter].color }}>
-                                {FILTER_HIERARCHY[activeParentFilter].children.map(childTag => {
-                                    const color = FILTER_HIERARCHY[activeParentFilter].color;
+                        {activeParentFilter && dynamicHierarchy[activeParentFilter]?.children.length > 0 && (
+                            <div className="flex flex-wrap gap-2 p-3 mt-1 ml-2 border-l-2 bg-[#050505]" style={{ borderColor: dynamicHierarchy[activeParentFilter].color }}>
+                                {dynamicHierarchy[activeParentFilter].children.map(childTag => {
+                                    const color = dynamicHierarchy[activeParentFilter].color;
                                     const isActive = activeSubFilters.includes(childTag);
                                     return (
                                         <button 
@@ -599,7 +651,7 @@ const App = () => {
                 </div>
             </div>
 
-            {/* MODAL DE GERENCIAMENTO DE TAGS */}
+            {/* MODAL DE GERENCIAMENTO DE TAGS (AGORA COM HIERARQUIA) */}
             {showTagManager && session && (
                 <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                     <div className="industrial-panel p-6 w-full max-w-md shadow-[0_0_50px_rgba(166,33,255,0.2)] border-hlzPurple fade-in">
@@ -609,36 +661,64 @@ const App = () => {
                         </div>
                         
                         <div className="max-h-[40vh] overflow-y-auto mb-6 space-y-2 pr-2">
-                            {dbTags.map(tag => (
-                                <div key={tag.id} className={`flex justify-between items-center bg-[#050505] border p-2 transition-colors ${editingTagId === tag.id ? 'border-hlzPurple' : 'border-gray-800 hover:border-gray-600'}`}>
+                            {dbTags.map(tag => {
+                                const isChild = !!tag.parent_id;
+                                const parentTag = isChild ? dbTags.find(p => p.id === tag.parent_id) : null;
+                                
+                                return (
+                                <div key={tag.id} className={`flex justify-between items-center bg-[#050505] border p-2 transition-colors ${editingTagId === tag.id ? 'border-hlzPurple' : 'border-gray-800 hover:border-gray-600'} ${isChild ? 'ml-6 border-l-2' : ''}`} style={{ borderLeftColor: isChild && parentTag ? parentTag.color : '' }}>
                                     <div className="flex items-center gap-3">
-                                        <div className="w-4 h-4 rounded-full border border-gray-500" style={{ backgroundColor: tag.color }}></div>
-                                        <span className="text-sm uppercase tracking-wider">#{tag.name}</span>
+                                        {!isChild && <div className="w-4 h-4 rounded-full border border-gray-500" style={{ backgroundColor: tag.color }}></div>}
+                                        <div className="flex flex-col">
+                                            <span className={`text-sm uppercase tracking-wider ${isChild ? 'text-gray-400' : 'text-white font-bold'}`}>#{tag.name}</span>
+                                            {isChild && parentTag && <span className="text-[8px] text-gray-600 uppercase">Filho de: {parentTag.name}</span>}
+                                        </div>
                                     </div>
                                     <div className="flex gap-3">
                                         <button onClick={() => handleEditTagClick(tag)} className="text-gray-500 hover:text-blue-400 transition-colors"><Edit size={14}/></button>
                                         <button onClick={() => handleDeleteTag(tag.id)} className="text-gray-500 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
                                     </div>
                                 </div>
-                            ))}
+                            )})}
                             {dbTags.length === 0 && <p className="text-xs text-gray-500">Aucun tag trouvé.</p>}
                         </div>
 
-                        <div className="border-t border-gray-800 pt-4">
+                        <div className="border-t border-gray-800 pt-4 bg-[#0a0a0a] -mx-6 -mb-6 p-6">
                             <h3 className="text-[10px] text-gray-500 uppercase tracking-widest mb-3">
                                 {editingTagId ? t.editTag : t.newTag}
                             </h3>
-                            <div className="flex gap-2 items-center">
-                                <input type="text" placeholder={t.tagName} className="flex-1 industrial-input p-2 text-sm" value={newTagName} onChange={e => setNewTagName(e.target.value)} />
-                                <input type="color" className="w-10 h-10 bg-transparent cursor-pointer border-0 p-0" value={newTagColor} onChange={e => setNewTagColor(e.target.value)} title={t.tagColor} />
-                                {editingTagId ? (
-                                    <div className="flex gap-1">
-                                        <button onClick={handleSaveTag} className="bg-hlzPurple text-black font-bold px-3 py-2 uppercase text-[10px] hover:bg-white transition-colors">{t.save}</button>
-                                        <button onClick={handleCancelTagEdit} className="bg-gray-800 text-gray-400 font-bold px-3 py-2 uppercase text-[10px] hover:bg-gray-700 transition-colors"><X size={14}/></button>
-                                    </div>
-                                ) : (
-                                    <button onClick={handleSaveTag} className="bg-hlzPurple text-black font-bold px-4 py-2 uppercase text-[10px] hover:bg-white transition-colors">{t.addTag}</button>
-                                )}
+                            <div className="flex flex-col gap-3">
+                                <div className="flex gap-2 items-center">
+                                    <input type="text" placeholder={t.tagName} className="flex-1 industrial-input p-2 text-sm" value={newTagName} onChange={e => setNewTagName(e.target.value)} />
+                                    {/* Esconde o seletor de cor se for uma subcategoria (herda do pai) */}
+                                    {newTagParentId === "" && (
+                                        <input type="color" className="w-10 h-10 bg-transparent cursor-pointer border-0 p-0" value={newTagColor} onChange={e => setNewTagColor(e.target.value)} title={t.tagColor} />
+                                    )}
+                                </div>
+                                
+                                {/* NOVO SELETOR DE PAI NO PAINEL ADMIN */}
+                                <div className="flex gap-2 items-center">
+                                    <select 
+                                        className="flex-1 industrial-input p-2 text-xs text-gray-400"
+                                        value={newTagParentId}
+                                        onChange={(e) => setNewTagParentId(e.target.value)}
+                                    >
+                                        <option value="">[ Categoria Principal ]</option>
+                                        {/* Só permite que Categorias Principais sejam escolhidas como pai */}
+                                        {dbTags.filter(t => !t.parent_id).map(parent => (
+                                            <option key={parent.id} value={parent.id}>Subcategoria de: #{parent.name}</option>
+                                        ))}
+                                    </select>
+                                    
+                                    {editingTagId ? (
+                                        <div className="flex gap-1">
+                                            <button onClick={handleSaveTag} className="bg-hlzPurple text-black font-bold px-3 py-2 uppercase text-[10px] hover:bg-white transition-colors">{t.save}</button>
+                                            <button onClick={handleCancelTagEdit} className="bg-gray-800 text-gray-400 font-bold px-3 py-2 uppercase text-[10px] hover:bg-gray-700 transition-colors"><X size={14}/></button>
+                                        </div>
+                                    ) : (
+                                        <button onClick={handleSaveTag} className="bg-hlzPurple text-black font-bold px-4 py-2 uppercase text-[10px] hover:bg-white transition-colors">{t.addTag}</button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -709,11 +789,11 @@ const App = () => {
                             <textarea placeholder={t.notes} className="w-full industrial-input p-3 h-24 resize-none" value={newMemory.description} onChange={e => setNewMemory({...newMemory, description: e.target.value})}></textarea>
                             <input type="text" placeholder={t.mediaUrl} className="w-full industrial-input p-3 text-xs" value={newMemory.content} onChange={e => setNewMemory({...newMemory, content: e.target.value})} />
                             
-                            {/* --- SELETOR VISUAL DE TAGS PARA O ADMIN --- */}
+                            {/* --- SELETOR VISUAL DINÂMICO --- */}
                             <div className="w-full industrial-input p-3 space-y-3 bg-[#050505]">
                                 <span className="text-[10px] text-gray-500 uppercase tracking-widest block">{t.context} / Tags</span>
                                 <div className="max-h-[150px] overflow-y-auto pr-2 space-y-3">
-                                    {Object.entries(FILTER_HIERARCHY).map(([parent, data]) => (
+                                    {Object.entries(dynamicHierarchy).map(([parent, data]) => (
                                         <div key={parent} className="border-l-2 pl-2" style={{ borderColor: data.color }}>
                                             <button 
                                                 onClick={(e) => {
@@ -760,7 +840,6 @@ const App = () => {
                                 </div>
                                 <input type="text" placeholder="Ou digite tags extra (separadas por virgule)..." className="w-full bg-transparent border-t border-gray-800 pt-2 text-xs text-gray-400 focus:outline-none" value={newMemory.tags} onChange={e => setNewMemory({...newMemory, tags: e.target.value})} />
                             </div>
-                            {/* ------------------------------------------------ */}
 
                             <button onClick={handleSaveMemory} className="w-full bg-hlzPurple hover:bg-white hover:text-black text-black font-bold py-3 uppercase tracking-widest transition-all">{t.save}</button>
                         </div>
