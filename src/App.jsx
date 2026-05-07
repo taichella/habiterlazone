@@ -461,7 +461,7 @@ const App = () => {
                                 <div className="flex gap-2 items-center">
                                     {/* TEXTO LIMPO: Sem "Subtag de:" */}
                                     <select className="flex-1 industrial-input p-2 text-xs text-gray-400" value={newTagParentName} onChange={(e) => setNewTagParentName(e.target.value)}>
-                                        <option value="">[ Nova Categoria Principal ]</option>
+                                        <option value="">[ Nouvelle catégorie ]</option>
                                         {allParentOptions.map(parent => (
                                             <option key={`opt-${parent}`} value={parent}>#{parent}</option>
                                         ))}
