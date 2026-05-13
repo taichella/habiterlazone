@@ -9,21 +9,21 @@ const PALETTE = { purple: '#A621FF', neutralBg: '#0A0A0A' };
 const TRANSLATIONS = {
     fr: {
         subtitle: "Journal de terrain(s)", searchPlaceholder: "Rechercher...", clear: "Effacer", newSignal: "Nouveau Signal", editSignal: "Éditer", 
-        idPlace: "Identifiant", notes: "Notes...", mediaUrl: "URL", dateTimeStr: "Date", save: "Enregistrer", context: "Tags", lat: "Lat", lng: "Lng",
+        idPlace: "Identifiant", notes: "Notes...", mediaUrl: "URL", dateTimeStr: "Date et Heure", save: "Enregistrer", context: "Tags", lat: "Lat", lng: "Lng",
         types: { text: "Texte", photo: "Photo", video: "Vidéo", audio: "Audio" }, selectHint: "Sélectionnez un thème", timeline: "Chronologie",
         aboutProjectBtn: "À Propos", aboutAuthorBtn: "Misia Forlen", aboutTitle: "À Propos", authorTitle: "Misia Forlen",
         aboutProjectTitle: "Le Projet", aboutProjectDesc: "Recherche-création documentant les ZES.", aboutAuthorTitle: "L'Auteure",
-        aboutAuthorDesc: "Architecte et doctorante RADIAN.", mapType: "Carte", mapStyleDark: "Sombre", mapStyleLight: "Clair", mapStyleSat: "Sat", directionView: "Vue",
+        aboutAuthorDesc: "Architecte et doctorante RADIAN.", mapType: "Carte", mapStyleDark: "Sombre", mapStyleLight: "Clair", mapStyleSat: "Sat", directionView: "Angle de Vue",
         login: "Connexion", email: "E-mail", password: "Mot de passe", enter: "Entrer", edit: "Éditer", duplicate: "Dupliquer", delete: "Supprimer", deleteConfirm: "Sûr?",
         manageTags: "Gérer les Tags", newTag: "Nouveau Tag", editTag: "Éditer Tag", tagName: "Nom", tagColor: "Couleur", addTag: "Ajouter"
     },
     en: {
         subtitle: "Mapping System", searchPlaceholder: "Search...", clear: "Clear", newSignal: "New Signal", editSignal: "Edit", 
-        idPlace: "ID", notes: "Notes...", mediaUrl: "URL", dateTimeStr: "Date", save: "Save", context: "Tags", lat: "Lat", lng: "Lng",
+        idPlace: "ID", notes: "Notes...", mediaUrl: "URL", dateTimeStr: "Date & Time", save: "Save", context: "Tags", lat: "Lat", lng: "Lng",
         types: { text: "Text", photo: "Photo", video: "Video", audio: "Audio" }, selectHint: "Select a theme", timeline: "Timeline",
         aboutProjectBtn: "About", aboutAuthorBtn: "Misia Forlen", aboutTitle: "About", authorTitle: "Misia Forlen",
         aboutProjectTitle: "The Project", aboutProjectDesc: "Research-creation in SEZ.", aboutAuthorTitle: "The Author",
-        aboutAuthorDesc: "Architect and PhD RADIAN.", mapType: "Map", mapStyleDark: "Dark", mapStyleLight: "Light", mapStyleSat: "Sat", directionView: "View",
+        aboutAuthorDesc: "Architect and PhD RADIAN.", mapType: "Map", mapStyleDark: "Dark", mapStyleLight: "Light", mapStyleSat: "Sat", directionView: "View Direction",
         login: "Login", email: "Email", password: "Password", enter: "Enter", edit: "Edit", duplicate: "Duplicate", delete: "Delete", deleteConfirm: "Sure?",
         manageTags: "Manage Tags", newTag: "New Tag", editTag: "Edit Tag", tagName: "Name", tagColor: "Color", addTag: "Add"
     }
@@ -46,7 +46,7 @@ const App = () => {
     const [selectedMemory, setSelectedMemory] = useState(null);
     const [aboutTab, setAboutTab] = useState(null);
     const [mapStyle, setMapStyle] = useState('dark');
-    const [activeParentFilters, setActiveParentFilters] = useState([]); // Array para selecção múltipla
+    const [activeParentFilters, setActiveParentFilters] = useState([]); 
     const [activeSubFilters, setActiveSubFilters] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [session, setSession] = useState(null);
@@ -70,7 +70,6 @@ const App = () => {
     const linesRef = useRef([]);
     const timelineRefs = useRef({});
 
-    // --- CÉREBRO 100% BANCO DE DADOS (SUPABASE) ---
     const currentHierarchy = useMemo(() => {
         const hierarchy = {};
         dbTags.filter(t => !t.parent_name).forEach(tag => {
@@ -163,7 +162,8 @@ const App = () => {
                 supabase.auth.getSession().then(({ data: { session } }) => {
                     if (session && !showTagManager) { 
                         const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-                        setEditingId(null); setNewMemory({ lat: e.latlng.lat, lng: e.latlng.lng, title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: now.toISOString().slice(0, 16) });
+                        setEditingId(null); 
+                        setNewMemory({ lat: e.latlng.lat, lng: e.latlng.lng, title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: now.toISOString().slice(0, 16) });
                         setIsAdding(true); setSelectedMemory(null); setAboutTab(null);
                     }
                 });
@@ -227,8 +227,20 @@ const App = () => {
         }
     };
 
-    const handleEditClick = (mem, e) => { e.stopPropagation(); setNewMemory({ ...mem, datetime: mem.date, tags: mem.tags ? mem.tags.join(', ') : "" }); setEditingId(mem.id); setIsAdding(true); };
-    const handleDuplicateClick = (mem, e) => { e.stopPropagation(); setNewMemory({ ...mem, title: mem.title + " (Copie)", datetime: mem.date, tags: mem.tags ? mem.tags.join(', ') : "", lat: mem.lat + 0.005, lng: mem.lng + 0.005 }); setEditingId(null); setIsAdding(true); };
+    const handleEditClick = (mem, e) => { 
+        e.stopPropagation(); 
+        const formattedDate = mem.date ? new Date(mem.date).toISOString().slice(0, 16) : "";
+        setNewMemory({ ...mem, datetime: formattedDate, tags: mem.tags ? mem.tags.join(', ') : "" }); 
+        setEditingId(mem.id); 
+        setIsAdding(true); 
+    };
+    const handleDuplicateClick = (mem, e) => { 
+        e.stopPropagation(); 
+        const formattedDate = mem.date ? new Date(mem.date).toISOString().slice(0, 16) : "";
+        setNewMemory({ ...mem, title: mem.title + " (Copie)", datetime: formattedDate, tags: mem.tags ? mem.tags.join(', ') : "", lat: mem.lat + 0.005, lng: mem.lng + 0.005 }); 
+        setEditingId(null); 
+        setIsAdding(true); 
+    };
 
     const handleSaveMemory = async () => {
         if (!newMemory.title || newMemory.lat === "" || newMemory.lng === "" || !newMemory.datetime) return;
@@ -422,7 +434,7 @@ const App = () => {
 
             {showTagManager && session && (
                 <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                    <div className="industrial-panel p-6 w-full max-w-md shadow-[0_0_50px_rgba(166,33,255,0.2)] border-hlzPurple fade-in">
+                    <div className="industrial-panel p-6 w-full max-w-md shadow-[0_0_50px_rgba(166,33,255,0.2)] border-hlzPurple fade-in max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-2">
                             <h2 className="text-xl font-bold text-white uppercase flex items-center gap-2"><Tag size={18}/> {t.manageTags}</h2>
                             <button onClick={() => { setShowTagManager(false); handleCancelTagEdit(); }} className="text-gray-500 hover:text-hlzPurple"><X /></button>
@@ -508,7 +520,8 @@ const App = () => {
 
             {isAdding && session && (
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[1100] w-11/12 max-w-md">
-                    <div className="industrial-panel p-6 shadow-[0_0_50px_rgba(0,0,0,0.9)] border-hlzPurple">
+                    {/* ADICIONADO AQUI: max-h-[90vh] e overflow-y-auto PARA O FORMULÁRIO RESPONSIVO */}
+                    <div className="industrial-panel p-6 shadow-[0_0_50px_rgba(0,0,0,0.9)] border-hlzPurple max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-2">
                             <h2 className="text-xl font-bold text-white uppercase">{editingId ? t.editSignal : t.newSignal}</h2>
                             <button onClick={closeModal} className="text-gray-500"><X /></button>
@@ -519,11 +532,36 @@ const App = () => {
                                 <div className="flex-1 flex flex-col gap-1"><label className="text-[10px] text-gray-500 uppercase">{t.lat}</label><input type="number" step="any" className="w-full industrial-input p-2 text-sm" value={newMemory.lat} onChange={e => setNewMemory({...newMemory, lat: e.target.value})} /></div>
                                 <div className="flex-1 flex flex-col gap-1"><label className="text-[10px] text-gray-500 uppercase">{t.lng}</label><input type="number" step="any" className="w-full industrial-input p-2 text-sm" value={newMemory.lng} onChange={e => setNewMemory({...newMemory, lng: e.target.value})} /></div>
                             </div>
+                            
+                            {/* --- INSERÇÃO DA DATA E HORA --- */}
+                            <div className="flex flex-col gap-1">
+                                <label className="text-[10px] text-gray-500 uppercase tracking-widest">{t.dateTimeStr}</label>
+                                <input type="datetime-local" className="w-full industrial-input p-2 text-sm text-gray-200" value={newMemory.datetime} onChange={e => setNewMemory({...newMemory, datetime: e.target.value})} />
+                            </div>
+                            {/* ----------------------------------- */}
+
                             <div className="flex gap-2">
                                 {['text', 'photo', 'video', 'audio'].map(type => (
-                                    <button key={type} onClick={() => setNewMemory({...newMemory, type})} className={`flex-1 py-1 text-[10px] uppercase border ${newMemory.type === type ? 'bg-hlzPurple text-black border-hlzPurple font-bold' : 'border-gray-700 text-gray-500'}`}>{t.types[type]}</button>
+                                    <button key={type} onClick={(e) => { e.preventDefault(); setNewMemory({...newMemory, type}) }} className={`flex-1 py-1 text-[10px] uppercase border ${newMemory.type === type ? 'bg-hlzPurple text-black border-hlzPurple font-bold' : 'border-gray-700 text-gray-500'}`}>{t.types[type]}</button>
                                 ))}
                             </div>
+
+                            {/* --- INSERÇÃO DA DIREÇÃO DA FOTO (ÂNGULO) --- */}
+                            <div className="flex justify-between items-center bg-[#050505] border border-gray-800 p-3">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-xs text-gray-500 uppercase">{t.directionView}:</span>
+                                    <div className="relative w-12 h-12 flex items-center justify-center border-2 border-[#1e2029] bg-[#0a0a0c] rounded-full overflow-hidden shadow-[0_0_15px_rgba(166,33,255,0.1)]">
+                                        <svg width="48" height="48" viewBox="0 0 48 48" style={{ position: 'absolute', transform: `rotate(${newMemory.direction || 0}deg)`, transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)' }}><path d="M24,24 L6,4 A26,26 0 0,1 42,4 Z" fill="rgba(166, 33, 255, 0.6)" stroke="#D8B4FE" strokeWidth="1.5" /></svg>
+                                        <div className="absolute w-3 h-3 bg-white transform rotate-45 z-10 shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
+                                    </div>
+                                </div>
+                                <div className="flex gap-1">
+                                    {[{v: 0, l: '↑'}, {v: 90, l: '→'}, {v: 180, l: '↓'}, {v: 270, l: '←'}].map(dir => (
+                                        <button key={dir.v} onClick={(e) => { e.preventDefault(); setNewMemory({...newMemory, direction: dir.v}) }} className={`w-8 h-8 flex items-center justify-center border text-sm transition-colors ${newMemory.direction === dir.v ? 'bg-hlzPurple text-black border-hlzPurple' : 'border-gray-700 text-gray-500 hover:border-hlzPurple hover:text-white'}`}>{dir.l}</button>
+                                    ))}
+                                </div>
+                            </div>
+
                             <textarea placeholder={t.notes} className="w-full industrial-input p-3 h-20 resize-none" value={newMemory.description} onChange={e => setNewMemory({...newMemory, description: e.target.value})}></textarea>
                             <input type="text" placeholder={t.mediaUrl} className="w-full industrial-input p-3 text-xs" value={newMemory.content} onChange={e => setNewMemory({...newMemory, content: e.target.value})} />
                             
