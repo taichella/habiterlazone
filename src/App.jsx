@@ -10,7 +10,7 @@ const TRANSLATIONS = {
     fr: {
         subtitle: "Journal de terrain(s)", searchPlaceholder: "Rechercher...", clear: "Effacer", newSignal: "Nouveau Signal", editSignal: "Éditer", 
         idPlace: "Identifiant", notes: "Notes...", mediaUrl: "URL", dateTimeStr: "Date et Heure", save: "Enregistrer", context: "Tags", lat: "Lat", lng: "Lng",
-        types: { text: "Texte", photo: "Photo", video: "Vidéo", audio: "Audio" }, selectHint: "Sélectionnez un thème", timeline: "Chronologie",
+        types: { text: "Texte", photo: "Photo", galerie: "Galerie", video: "Vidéo", audio: "Audio" }, selectHint: "Sélectionnez un thème", timeline: "Chronologie",
         aboutProjectBtn: "À Propos", aboutAuthorBtn: "Misia Forlen", aboutTitle: "À Propos", authorTitle: "Misia Forlen",
         aboutProjectTitle: "Le Projet", aboutProjectDesc: "Recherche-création documentant les ZES.", aboutAuthorTitle: "L'Auteure",
         aboutAuthorDesc: "Architecte et doctorante RADIAN.", mapType: "Carte", mapStyleDark: "Sombre", mapStyleLight: "Clair", mapStyleSat: "Sat", directionView: "Angle de Vue",
@@ -20,7 +20,7 @@ const TRANSLATIONS = {
     en: {
         subtitle: "Mapping System", searchPlaceholder: "Search...", clear: "Clear", newSignal: "New Signal", editSignal: "Edit", 
         idPlace: "ID", notes: "Notes...", mediaUrl: "URL", dateTimeStr: "Date & Time", save: "Save", context: "Tags", lat: "Lat", lng: "Lng",
-        types: { text: "Text", photo: "Photo", video: "Video", audio: "Audio" }, selectHint: "Select a theme", timeline: "Timeline",
+        types: { text: "Text", photo: "Photo", galerie: "Gallery", video: "Video", audio: "Audio" }, selectHint: "Select a theme", timeline: "Timeline",
         aboutProjectBtn: "About", aboutAuthorBtn: "Misia Forlen", aboutTitle: "About", authorTitle: "Misia Forlen",
         aboutProjectTitle: "The Project", aboutProjectDesc: "Research-creation in SEZ.", aboutAuthorTitle: "The Author",
         aboutAuthorDesc: "Architect and PhD RADIAN.", mapType: "Map", mapStyleDark: "Dark", mapStyleLight: "Light", mapStyleSat: "Sat", directionView: "View Direction",
@@ -29,13 +29,31 @@ const TRANSLATIONS = {
     }
 };
 
+// CÉREBRO DA DATA: Francês (Europeu 24h) | Inglês (AM/PM)
 const formatDateTime = (datetimeStr, lang) => {
     if (!datetimeStr) return "";
-    const d = new Date(datetimeStr);
-    if (isNaN(d.getTime())) return datetimeStr;
-    if (lang === 'fr') return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()} à ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-    let h = d.getHours(), ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} at ${String(h).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${ampm}`;
+    try {
+        let cleanStr = datetimeStr;
+        if (cleanStr.includes('T')) {
+            cleanStr = cleanStr.slice(0, 16); 
+            const [datePart, timePart] = cleanStr.split('T');
+            const [year, month, day] = datePart.split('-');
+            const [hours, minutes] = timePart.split(':');
+            
+            if (lang === 'fr') {
+                return `${day}-${month}-${year} à ${hours}:${minutes}`;
+            } else {
+                let h = parseInt(hours, 10);
+                const ampm = h >= 12 ? 'PM' : 'AM';
+                h = h % 12 || 12;
+                return `${year}-${month}-${day} at ${String(h).padStart(2, '0')}:${minutes} ${ampm}`;
+            }
+        }
+        return datetimeStr; 
+    } catch (error) {
+        console.debug("Format date error:", error);
+        return datetimeStr;
+    }
 };
 
 const App = () => {
@@ -149,7 +167,9 @@ const App = () => {
         return result;
     }, [memories, activeParentFilters, activeSubFilters, searchQuery, currentHierarchy]);
 
-    const timelineMemories = useMemo(() => [...filteredMemories].sort((a, b) => new Date(b.date) - new Date(a.date)), [filteredMemories]);
+    const timelineMemories = useMemo(() => [...filteredMemories].sort((a, b) => {
+        return (b.date || "").localeCompare(a.date || "");
+    }), [filteredMemories]);
 
     useEffect(() => {
         if (!mapInstanceRef.current && mapRef.current) {
@@ -161,9 +181,11 @@ const App = () => {
             map.on('click', (e) => {
                 supabase.auth.getSession().then(({ data: { session } }) => {
                     if (session && !showTagManager) { 
-                        const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                        const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+                        const localISOTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 16);
+                        
                         setEditingId(null); 
-                        setNewMemory({ lat: e.latlng.lat, lng: e.latlng.lng, title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: now.toISOString().slice(0, 16) });
+                        setNewMemory({ lat: e.latlng.lat, lng: e.latlng.lng, title: "", description: "", type: "text", tags: "", content: "", direction: 0, datetime: localISOTime });
                         setIsAdding(true); setSelectedMemory(null); setAboutTab(null);
                     }
                 });
@@ -229,14 +251,15 @@ const App = () => {
 
     const handleEditClick = (mem, e) => { 
         e.stopPropagation(); 
-        const formattedDate = mem.date ? new Date(mem.date).toISOString().slice(0, 16) : "";
+        const formattedDate = mem.date ? mem.date.slice(0, 16) : "";
         setNewMemory({ ...mem, datetime: formattedDate, tags: mem.tags ? mem.tags.join(', ') : "" }); 
         setEditingId(mem.id); 
         setIsAdding(true); 
     };
+    
     const handleDuplicateClick = (mem, e) => { 
         e.stopPropagation(); 
-        const formattedDate = mem.date ? new Date(mem.date).toISOString().slice(0, 16) : "";
+        const formattedDate = mem.date ? mem.date.slice(0, 16) : "";
         setNewMemory({ ...mem, title: mem.title + " (Copie)", datetime: formattedDate, tags: mem.tags ? mem.tags.join(', ') : "", lat: mem.lat + 0.005, lng: mem.lng + 0.005 }); 
         setEditingId(null); 
         setIsAdding(true); 
@@ -403,9 +426,18 @@ const App = () => {
                                     </div>
                                     {isExpanded && (
                                         <div className="px-3 pb-3 border-t border-gray-900 bg-black/40 fade-in">
-                                            <div className="my-3 border border-gray-800 relative flex items-center justify-center overflow-hidden bg-black min-h-[150px]">
-                                                {mem.type === 'photo' && mem.content && <img src={mem.content} onClick={() => setFullScreenItem({ type: 'photo', src: mem.content })} className="w-full h-auto max-h-[300px] object-contain grayscale hover:grayscale-0 cursor-pointer"/>}
-                                                {mem.type === 'video' && mem.content && <div className="relative w-full cursor-pointer group" onClick={() => setFullScreenItem({ type: 'video', src: mem.content })}><video src={mem.content} className="w-full h-auto max-h-[300px] object-contain opacity-70"></video><span className="absolute inset-0 flex items-center justify-center text-hlzPurple">▶</span></div>}
+                                            <div className="my-3 border border-gray-800 relative flex items-center justify-center overflow-hidden bg-black min-h-[150px] p-2">
+                                                {mem.type === 'photo' && mem.content && <img src={mem.content} onClick={(e) => { e.stopPropagation(); setFullScreenItem({ type: 'photo', src: mem.content }); }} className="w-full h-auto max-h-[300px] object-contain grayscale hover:grayscale-0 cursor-pointer"/>}
+                                                
+                                                {mem.type === 'galerie' && mem.content && (
+                                                    <div className="flex w-full overflow-x-auto gap-2 pb-2 snap-x snap-mandatory">
+                                                        {mem.content.split(',').map((url, i) => url.trim() ? (
+                                                            <img key={i} src={url.trim()} onClick={(e) => { e.stopPropagation(); setFullScreenItem({ type: 'galerie', urls: mem.content.split(',').map(u=>u.trim()).filter(Boolean), currentIndex: i }); }} className="h-40 w-auto object-cover grayscale hover:grayscale-0 cursor-pointer snap-center border border-gray-800" alt={`galerie-${i}`}/>
+                                                        ) : null)}
+                                                    </div>
+                                                )}
+
+                                                {mem.type === 'video' && mem.content && <div className="relative w-full cursor-pointer group" onClick={(e) => { e.stopPropagation(); setFullScreenItem({ type: 'video', src: mem.content }); }}><video src={mem.content} className="w-full h-auto max-h-[300px] object-contain opacity-70"></video><span className="absolute inset-0 flex items-center justify-center text-hlzPurple">▶</span></div>}
                                                 {mem.type === 'audio' && <div className="p-4 w-full flex flex-col items-center justify-center"><Mic size={24} color="#A621FF" className="mb-2" /><audio src={mem.content} controls className="w-full h-8" /></div>}
                                                 {mem.type === 'text' && <FileText size={32} color="#555" />}
                                             </div>
@@ -520,7 +552,6 @@ const App = () => {
 
             {isAdding && session && (
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-[1100] w-11/12 max-w-md">
-                    {/* ADICIONADO AQUI: max-h-[90vh] e overflow-y-auto PARA O FORMULÁRIO RESPONSIVO */}
                     <div className="industrial-panel p-6 shadow-[0_0_50px_rgba(0,0,0,0.9)] border-hlzPurple max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-2">
                             <h2 className="text-xl font-bold text-white uppercase">{editingId ? t.editSignal : t.newSignal}</h2>
@@ -533,20 +564,17 @@ const App = () => {
                                 <div className="flex-1 flex flex-col gap-1"><label className="text-[10px] text-gray-500 uppercase">{t.lng}</label><input type="number" step="any" className="w-full industrial-input p-2 text-sm" value={newMemory.lng} onChange={e => setNewMemory({...newMemory, lng: e.target.value})} /></div>
                             </div>
                             
-                            {/* --- INSERÇÃO DA DATA E HORA --- */}
                             <div className="flex flex-col gap-1">
                                 <label className="text-[10px] text-gray-500 uppercase tracking-widest">{t.dateTimeStr}</label>
                                 <input type="datetime-local" className="w-full industrial-input p-2 text-sm text-gray-200" value={newMemory.datetime} onChange={e => setNewMemory({...newMemory, datetime: e.target.value})} />
                             </div>
-                            {/* ----------------------------------- */}
 
-                            <div className="flex gap-2">
-                                {['text', 'photo', 'video', 'audio'].map(type => (
-                                    <button key={type} onClick={(e) => { e.preventDefault(); setNewMemory({...newMemory, type}) }} className={`flex-1 py-1 text-[10px] uppercase border ${newMemory.type === type ? 'bg-hlzPurple text-black border-hlzPurple font-bold' : 'border-gray-700 text-gray-500'}`}>{t.types[type]}</button>
+                            <div className="flex gap-2 flex-wrap">
+                                {['text', 'photo', 'galerie', 'video', 'audio'].map(type => (
+                                    <button key={type} onClick={(e) => { e.preventDefault(); setNewMemory({...newMemory, type}) }} className={`flex-1 min-w-[60px] py-1 text-[10px] uppercase border ${newMemory.type === type ? 'bg-hlzPurple text-black border-hlzPurple font-bold' : 'border-gray-700 text-gray-500'}`}>{t.types[type]}</button>
                                 ))}
                             </div>
 
-                            {/* --- INSERÇÃO DA DIREÇÃO DA FOTO (ÂNGULO) --- */}
                             <div className="flex justify-between items-center bg-[#050505] border border-gray-800 p-3">
                                 <div className="flex items-center gap-4">
                                     <span className="text-xs text-gray-500 uppercase">{t.directionView}:</span>
@@ -563,7 +591,7 @@ const App = () => {
                             </div>
 
                             <textarea placeholder={t.notes} className="w-full industrial-input p-3 h-20 resize-none" value={newMemory.description} onChange={e => setNewMemory({...newMemory, description: e.target.value})}></textarea>
-                            <input type="text" placeholder={t.mediaUrl} className="w-full industrial-input p-3 text-xs" value={newMemory.content} onChange={e => setNewMemory({...newMemory, content: e.target.value})} />
+                            <input type="text" placeholder={newMemory.type === 'galerie' ? "URLs (séparées par une virgule)..." : t.mediaUrl} className="w-full industrial-input p-3 text-xs" value={newMemory.content} onChange={e => setNewMemory({...newMemory, content: e.target.value})} />
                             
                             <div className="w-full industrial-input p-3 space-y-3 bg-[#050505]">
                                 <span className="text-[10px] text-gray-500 uppercase block">Tags</span>
@@ -596,7 +624,7 @@ const App = () => {
                 </div>
             )}
 
-            {/* MODAL ABOUT (À PROPOS) - Restaurado */}
+            {/* MODAL ABOUT (À PROPOS) */}
             {aboutTab && (
                 <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                     <div className="industrial-panel p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto fade-in shadow-[0_0_50px_rgba(166,33,255,0.2)] border-hlzPurple">
@@ -646,9 +674,44 @@ const App = () => {
             )}
 
             {fullScreenItem && (
-                <div className="fixed inset-0 z-[3000] bg-black/95 flex items-center justify-center p-4 fade-in" onClick={() => setFullScreenItem(null)}>
-                    <button className="absolute top-6 right-6 text-gray-400 bg-black/50 p-2 rounded-full"><X size={32} /></button>
-                    {fullScreenItem.type === 'photo' ? <img src={fullScreenItem.src} className="max-w-full max-h-full object-contain" onClick={(e) => e.stopPropagation()} /> : <video src={fullScreenItem.src} controls autoPlay className="max-w-full max-h-full" onClick={(e) => e.stopPropagation()}></video>}
+                <div className="fixed inset-0 z-[4000] bg-black/95 flex items-center justify-center p-4 fade-in" onClick={() => setFullScreenItem(null)}>
+                    <button className="absolute top-6 right-6 text-gray-400 bg-black/50 p-2 rounded-full hover:text-white z-50"><X size={32} /></button>
+                    
+                    {fullScreenItem.type === 'photo' && <img src={fullScreenItem.src} className="max-w-full max-h-full object-contain" onClick={(e) => e.stopPropagation()} />}
+                    
+                    {fullScreenItem.type === 'galerie' && (
+                        <div className="relative w-full h-full flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                            <img src={fullScreenItem.urls[fullScreenItem.currentIndex]} className="max-w-full max-h-full object-contain fade-in" alt="zoom galerie"/>
+                            
+                            {fullScreenItem.urls.length > 1 && (
+                                <>
+                                    <button 
+                                        className="absolute left-4 md:left-12 top-1/2 transform -translate-y-1/2 bg-black/50 p-3 rounded-full text-white hover:bg-hlzPurple transition-colors z-50"
+                                        onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            setFullScreenItem(prev => ({...prev, currentIndex: prev.currentIndex === 0 ? prev.urls.length - 1 : prev.currentIndex - 1})); 
+                                        }}
+                                    >
+                                        <ChevronRight size={32} className="rotate-180" />
+                                    </button>
+                                    <button 
+                                        className="absolute right-4 md:right-12 top-1/2 transform -translate-y-1/2 bg-black/50 p-3 rounded-full text-white hover:bg-hlzPurple transition-colors z-50"
+                                        onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            setFullScreenItem(prev => ({...prev, currentIndex: prev.currentIndex === prev.urls.length - 1 ? 0 : prev.currentIndex + 1})); 
+                                        }}
+                                    >
+                                        <ChevronRight size={32} />
+                                    </button>
+                                    <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 text-white bg-black/50 px-4 py-2 rounded-full text-sm font-mono tracking-widest">
+                                        {fullScreenItem.currentIndex + 1} / {fullScreenItem.urls.length}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+                    
+                    {fullScreenItem.type === 'video' && <video src={fullScreenItem.src} controls autoPlay className="max-w-full max-h-full" onClick={(e) => e.stopPropagation()}></video>}
                 </div>
             )}
         </div>
