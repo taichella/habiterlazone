@@ -12,8 +12,8 @@ const TRANSLATIONS = {
         idPlace: "Identifiant", notes: "Notes...", mediaUrl: "URL", dateTimeStr: "Date et Heure", save: "Enregistrer", context: "Tags", lat: "Lat", lng: "Lng",
         types: { text: "Texte", photo: "Photo", galerie: "Galerie", video: "Vidéo", audio: "Audio" }, selectHint: "Sélectionnez un thème", timeline: "Chronologie",
         aboutProjectBtn: "À Propos", aboutAuthorBtn: "Misia Forlen", aboutTitle: "À Propos", authorTitle: "Misia Forlen",
-        aboutProjectTitle: "Le Projet", aboutProjectDesc: "Recherche-création documentant les ZES.", aboutAuthorTitle: "L'Auteure",
-        aboutAuthorDesc: "Architecte et doctorante RADIAN.", mapType: "Carte", mapStyleDark: "Sombre", mapStyleLight: "Clair", mapStyleSat: "Sat", directionView: "Angle de Vue",
+        aboutProjectTitle: "Le Projet", aboutProjectDesc: "« Habiter la zone » est un projet de recherche-création qui s’intéresse aux pratiques quotidiennes des travailleurs·ses mobiles dans les Zones Économiques Spéciales (ZES), modèles de zones franches fonctionnant comme des enclaves économiques et fiscales. Au croisement des sciences sociales, de l’architecture et des arts visuels, cette thèse explore des formes de créations qui nourrissent en retour la recherche sur l’habiter, en lien avec les mutations du travail et des territoires industriels. Ce doctorat s’articule autour de plusieurs productions : un mémoire théorique, des créations audiovisuelles et un journal de bord, sous forme d’une carte en ligne, interactive et évolutive, permettant de spatialiser les observations, réflexions, hypothèses, tout comme les images et les sons, issus du travail hybride de recherche et de création.", aboutAuthorTitle: "L'Auteure",
+        aboutAuthorDesc: "Architecte D.E., ATER en sociologie à l’Université Le Havre Normandie – laboratoire IDEES-Le Havre et doctorante au sein du programme doctoral RADIAN (Recherches en Art, Design, Innovation, Architecture en Normandie).\n\nPortrait réalisé par Magali Massoud lors du colloque \"En-quête de terrains : l’art de croiser les gens\", le 16/01/2023.", mapType: "Carte", mapStyleDark: "Sombre", mapStyleLight: "Clair", mapStyleSat: "Sat", directionView: "Angle de Vue",
         login: "Connexion", email: "E-mail", password: "Mot de passe", enter: "Entrer", edit: "Éditer", duplicate: "Dupliquer", delete: "Supprimer", deleteConfirm: "Sûr?",
         manageTags: "Gérer les Tags", newTag: "Nouveau Tag", editTag: "Éditer Tag", tagName: "Nom", tagColor: "Couleur", addTag: "Ajouter"
     },
@@ -22,8 +22,8 @@ const TRANSLATIONS = {
         idPlace: "ID", notes: "Notes...", mediaUrl: "URL", dateTimeStr: "Date & Time", save: "Save", context: "Tags", lat: "Lat", lng: "Lng",
         types: { text: "Text", photo: "Photo", galerie: "Gallery", video: "Video", audio: "Audio" }, selectHint: "Select a theme", timeline: "Timeline",
         aboutProjectBtn: "About", aboutAuthorBtn: "Misia Forlen", aboutTitle: "About", authorTitle: "Misia Forlen",
-        aboutProjectTitle: "The Project", aboutProjectDesc: "Research-creation in SEZ.", aboutAuthorTitle: "The Author",
-        aboutAuthorDesc: "Architect and PhD RADIAN.", mapType: "Map", mapStyleDark: "Dark", mapStyleLight: "Light", mapStyleSat: "Sat", directionView: "View Direction",
+        aboutProjectTitle: "The Project", aboutProjectDesc: "« Habiter la zone » est un projet de recherche-création qui s’intéresse aux pratiques quotidiennes des travailleurs·ses mobiles dans les Zones Économiques Spéciales (ZES), modèles de zones franches fonctionnant comme des enclaves économiques et fiscales. Au croisement des sciences sociales, de l’architecture et des arts visuels, cette thèse explore des formes de créations qui nourrissent en retour la recherche sur l’habiter, en lien avec les mutations du travail et des territoires industriels. Ce doctorat s’articule autour de plusieurs productions : un mémoire théorique, des créations audiovisuelles et un journal de bord, sous forme d’une carte en ligne, interactive et évolutive, permettant de spatialiser les observations, réflexions, hypothèses, tout comme les images et les sons, issus du travail hybride de recherche et de création.", aboutAuthorTitle: "The Author",
+        aboutAuthorDesc: "Architecte D.E., ATER en sociologie à l’Université Le Havre Normandie – laboratoire IDEES-Le Havre et doctorante au sein du programme doctoral RADIAN (Recherches en Art, Design, Innovation, Architecture en Normandie).\n\nPortrait réalisé par Magali Massoud lors du colloque \"En-quête de terrains : l’art de croiser les gens\", le 16/01/2023.", mapType: "Map", mapStyleDark: "Dark", mapStyleLight: "Light", mapStyleSat: "Sat", directionView: "View Direction",
         login: "Login", email: "Email", password: "Password", enter: "Enter", edit: "Edit", duplicate: "Duplicate", delete: "Delete", deleteConfirm: "Sure?",
         manageTags: "Manage Tags", newTag: "New Tag", editTag: "Edit Tag", tagName: "Name", tagColor: "Color", addTag: "Add"
     }
@@ -627,7 +627,7 @@ const App = () => {
             {/* MODAL ABOUT (À PROPOS) */}
             {aboutTab && (
                 <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                    <div className="industrial-panel p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto fade-in shadow-[0_0_50px_rgba(166,33,255,0.2)] border-hlzPurple">
+                    <div className="industrial-panel p-8 w-full max-w-4xl max-h-[90vh] overflow-y-auto fade-in shadow-[0_0_50px_rgba(166,33,255,0.2)] border-hlzPurple">
                         <div className="flex justify-between items-start mb-6 border-b border-gray-800 pb-4">
                             <div>
                                 <div className="flex items-center gap-2 mb-2"><span className="w-1.5 h-1.5 bg-hlzPurple animate-pulse"></span><p className="text-hlzPurple text-[10px] tracking-widest font-bold uppercase">INFO SYS</p></div>
@@ -641,31 +641,21 @@ const App = () => {
                         </div>
                         <div className="space-y-8 flex-1">
                             {aboutTab === 'project' && (
-                                <div className="fade-in grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="fade-in grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                                     <div>
                                         <h3 className="text-xl font-bold text-white uppercase mb-4 border-l-2 border-hlzPurple pl-3">{t.aboutProjectTitle}</h3>
-                                        <p className="text-sm text-gray-400 leading-relaxed text-justify font-light">{t.aboutProjectDesc}</p>
+                                        <p className="text-sm text-gray-400 leading-relaxed text-justify font-light whitespace-pre-wrap">{t.aboutProjectDesc}</p>
                                     </div>
-                                    <div className="bg-black border border-gray-800 relative group flex items-center justify-center p-4 min-h-[200px]">
-                                        <div className="relative z-10 flex flex-col items-center gap-2">
-                                            <Radio size={32} color="#A621FF" />
-                                            <span className="bg-black/80 px-3 py-1 text-[10px] text-hlzPurple border border-hlzPurple/30 tracking-widest uppercase backdrop-blur-sm">RADIAN RESEARCH PROGRAM</span>
-                                        </div>
-                                    </div>
+                                    <img src="https://pub-23caa2fc6265497690132d2d602d34b7.r2.dev/InfosMisia/camping.png" alt="Projet" className="w-full h-auto" />
                                 </div>
                             )}
                             {aboutTab === 'author' && (
-                                <div className="fade-in grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="fade-in grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                                     <div>
                                         <h3 className="text-xl font-bold text-white uppercase mb-4 border-l-2 border-hlzPurple pl-3">{t.aboutAuthorTitle}</h3>
-                                        <p className="text-sm text-gray-400 leading-relaxed text-justify font-light">{t.aboutAuthorDesc}</p>
+                                        <p className="text-sm text-gray-400 leading-relaxed text-justify font-light whitespace-pre-wrap">{t.aboutAuthorDesc}</p>
                                     </div>
-                                    <div className="bg-black border border-gray-800 relative group flex items-center justify-center p-4 min-h-[200px]">
-                                        <div className="relative z-10 flex flex-col items-center gap-2">
-                                            <User size={32} color="#A621FF" />
-                                            <span className="bg-black/80 px-3 py-1 text-[10px] text-hlzPurple border border-hlzPurple/30 tracking-widest uppercase backdrop-blur-sm">ARCHITECTE & CHERCHEUSE</span>
-                                        </div>
-                                    </div>
+                                    <img src="https://pub-23caa2fc6265497690132d2d602d34b7.r2.dev/InfosMisia/Misia_dessinMagali.png" alt="Autrice" className="w-full h-auto" />
                                 </div>
                             )}
                         </div>
