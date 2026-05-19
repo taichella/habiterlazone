@@ -173,8 +173,8 @@ const App = () => {
 
     useEffect(() => {
         if (!mapInstanceRef.current && mapRef.current) {
-            const map = L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([49.52, -1.80], 12);
-            tileLayerRef.current = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(map);
+            const map = L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([48.36528183896009, 9.95171907672971], 5);
+            tileLayerRef.current = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom:  20}).addTo(map);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
             setTimeout(() => map.invalidateSize(), 250);
 
@@ -342,7 +342,7 @@ const App = () => {
                     <div className="flex justify-between items-start mb-2 border-b border-gray-800 pb-2">
                         <div>
                             <h1 className="text-4xl font-bold text-white tracking-tighter leading-none flex items-center gap-3">
-                                <span className="block">Habiter<br />la Zone</span>
+                                <span className="block">Habiter<br />la zone</span>
                                 {session ? <span className="text-[10px] text-green-400 border border-green-400 px-1 bg-green-400/10 tracking-normal font-normal self-center translate-y-[-2px] flex items-center gap-1"><Unlock size={10}/> ADMIN</span> : <span className="text-[10px] text-hlzPurple border border-hlzPurple px-1 bg-hlzPurple/10 tracking-normal font-normal self-center translate-y-[-2px]">SYS.ONLINE</span>}
                             </h1>
                         </div>
