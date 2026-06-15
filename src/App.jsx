@@ -1,35 +1,24 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Search, X, Crosshair, Mic, FileText, Lock, Unlock, LogOut, Edit, Trash2, Copy, Tag, ChevronRight, Menu } from 'lucide-react';
+import { Search, X, Crosshair, Mic, FileText, Lock, Unlock, LogOut, Edit, Trash2, Copy, Tag, ChevronRight, Menu, ChevronUp, ChevronDown } from 'lucide-react';
 import { supabase } from './supabase';
 
 const PALETTE = { purple: '#A621FF', neutralBg: '#0A0A0A' };
 
-const TRANSLATIONS = {
-    fr: {
-        subtitle: "Journal de terrain(s)", searchPlaceholder: "Rechercher...", clear: "Effacer les filtres", newSignal: "Nouveau Signal", editSignal: "Éditer", 
-        idPlace: "Identifiant", notes: "Notes...", mediaUrl: "URL", dateTimeStr: "Date et Heure", save: "Enregistrer", context: "Tags", lat: "Lat", lng: "Lng",
-        types: { text: "Texte", photo: "Photo", galerie: "Galerie", video: "Vidéo", audio: "Audio" }, selectHint: "Filtres", timeline: "Chronologie",
-        aboutProjectBtn: "À Propos", aboutAuthorBtn: "Misia Forlen", aboutTitle: "À Propos", authorTitle: "Misia Forlen",
-        aboutProjectTitle: "Le Projet", aboutProjectDesc: "« Habiter la zone » est un projet de recherche-création qui s’intéresse aux pratiques quotidiennes des travailleurs·ses mobiles dans les Zones Économiques Spéciales (ZES), modèles de zones franches fonctionnant comme des enclaves économiques et fiscales. Au croisement des sciences sociales, de l’architecture et des arts visuels, cette thèse explore des formes de créations qui nourrissent en retour la recherche sur l’habiter, en lien avec les mutations du travail et des territoires industriels. Ce doctorat s’articule autour de plusieurs productions : un mémoire théorique, des créations audiovisuelles et un journal de bord, sous forme d’une carte en ligne, interactive et évolutive, permettant de spatialiser les observations, réflexions, hypothèses, tout comme les images et les sons, issus du travail hybride de recherche et de création.", aboutAuthorTitle: "L'Auteure",
-        aboutAuthorDesc: "Architecte D.E., ATER en sociologie à l’Université Le Havre Normandie – laboratoire IDEES-Le Havre et doctorante au sein du programme doctoral RADIAN (Recherches en Art, Design, Innovation, Architecture en Normandie).\n\nPortrait réalisé par Magali Massoud lors du colloque \"En-quête de terrains : l’art de croiser les gens\", le 16/01/2023.", mapType: "Carte", mapStyleDark: "Sombre", mapStyleLight: "Clair", mapStyleSat: "Sat", directionView: "Angle de Vue",
-        login: "Connexion", email: "E-mail", password: "Mot de passe", enter: "Entrer", edit: "Éditer", duplicate: "Dupliquer", delete: "Supprimer", deleteConfirm: "Sûr?",
-        manageTags: "Gérer les Tags", newTag: "Nouveau Tag", editTag: "Éditer Tag", tagName: "Nom", tagColor: "Couleur", addTag: "Ajouter"
-    },
-    en: {
-        subtitle: "Mapping System", searchPlaceholder: "Search...", clear: "Clear filters", newSignal: "New Signal", editSignal: "Edit", 
-        idPlace: "ID", notes: "Notes...", mediaUrl: "URL", dateTimeStr: "Date & Time", save: "Save", context: "Tags", lat: "Lat", lng: "Lng",
-        types: { text: "Text", photo: "Photo", galerie: "Gallery", video: "Video", audio: "Audio" }, selectHint: "Filters", timeline: "Timeline",
-        aboutProjectBtn: "About", aboutAuthorBtn: "Misia Forlen", aboutTitle: "About", authorTitle: "Misia Forlen",
-        aboutProjectTitle: "The Project", aboutProjectDesc: "« Habiter la zone » est un projet de recherche-création qui s’intéresse aux pratiques quotidiennes des travailleurs·ses mobiles dans les Zones Économiques Spéciales (ZES), modèles de zones franches fonctionnant comme des enclaves économiques et fiscales. Au croisement des sciences sociales, de l’architecture et des arts visuels, cette thèse explore des formes de créations qui nourrissent en retour la recherche sur l’habiter, en lien avec les mutations du travail et des territoires industriels. Ce doctorat s’articule autour de plusieurs productions : un mémoire théorique, des créations audiovisuelles et un journal de bord, sous forme d’une carte en ligne, interactive et évolutive, permettant de spatialiser les observations, réflexions, hypothèses, tout comme les images et les sons, issus du travail hybride de recherche et de création.", aboutAuthorTitle: "The Author",
-        aboutAuthorDesc: "Architecte D.E., ATER en sociologie à l’Université Le Havre Normandie – laboratoire IDEES-Le Havre et doctorante au sein du programme doctoral RADIAN (Recherches en Art, Design, Innovation, Architecture en Normandie).\n\nPortrait réalisé par Magali Massoud lors du colloque \"En-quête de terrains : l’art de croiser les gens\", le 16/01/2023.", mapType: "Map", mapStyleDark: "Dark", mapStyleLight: "Light", mapStyleSat: "Sat", directionView: "View Direction",
-        login: "Login", email: "Email", password: "Password", enter: "Enter", edit: "Edit", duplicate: "Duplicate", delete: "Delete", deleteConfirm: "Sure?",
-        manageTags: "Manage Tags", newTag: "New Tag", editTag: "Edit Tag", tagName: "Name", tagColor: "Color", addTag: "Add"
-    }
+// Apenas Francês
+const t = {
+    subtitle: "Journal de terrain(s)", searchPlaceholder: "Rechercher...", clear: "Effacer les filtres", newSignal: "Nouveau Signal", editSignal: "Éditer", 
+    idPlace: "Identifiant", notes: "Notes...", mediaUrl: "URL", dateTimeStr: "Date et Heure", save: "Enregistrer", context: "Tags", lat: "Lat", lng: "Lng",
+    types: { text: "Texte", photo: "Photo", galerie: "Galerie", video: "Vidéo", audio: "Audio" }, selectHint: "Filtres", timeline: "Chronologie",
+    aboutProjectBtn: "À Propos", aboutAuthorBtn: "Misia Forlen", aboutTitle: "À Propos", authorTitle: "Misia Forlen",
+    aboutProjectTitle: "Le Projet", aboutProjectDesc: "« Habiter la zone » est un projet de recherche-création qui s’intéresse aux pratiques quotidiennes des travailleurs·ses mobiles dans les Zones Économiques Spéciales (ZES), modèles de zones franches fonctionnant comme des enclaves économiques et fiscales. Au croisement des sciences sociales, de l’architecture et des arts visuels, cette thèse explore des formes de créations qui nourrissent en retour la recherche sur l’habiter, en lien avec les mutations du travail et des territoires industriels. Ce doctorat s’articule autour de plusieurs productions : un mémoire théorique, des créations audiovisuelles et un journal de bord, sous forme d’une carte en ligne, interactive et évolutive, permettant de spatialiser les observations, réflexions, hypothèses, tout comme les images et les sons, issus du travail hybride de recherche et de création.", aboutAuthorTitle: "L'Auteure",
+    aboutAuthorDesc: "Architecte D.E., ATER en sociologie à l’Université Le Havre Normandie – laboratoire IDEES-Le Havre et doctorante au sein du programme doctoral RADIAN (Recherches en Art, Design, Innovation, Architecture en Normandie).\n\nPortrait réalisé par Magali Massoud lors du colloque \"En-quête de terrains : l’art de croiser les gens\", le 16/01/2023.", mapType: "Carte", mapStyleDark: "Sombre", mapStyleLight: "Clair", mapStyleSat: "Sat", directionView: "Angle de Vue",
+    login: "Connexion", email: "E-mail", password: "Mot de passe", enter: "Entrer", edit: "Éditer", duplicate: "Dupliquer", delete: "Supprimer", deleteConfirm: "Sûr?",
+    manageTags: "Gérer les Tags", newTag: "Nouveau Tag", editTag: "Éditer Tag", tagName: "Nom", tagColor: "Couleur", addTag: "Ajouter"
 };
 
-const formatDateTime = (datetimeStr, lang) => {
+const formatDateTime = (datetimeStr) => {
     if (!datetimeStr) return "";
     try {
         let cleanStr = datetimeStr;
@@ -38,15 +27,7 @@ const formatDateTime = (datetimeStr, lang) => {
             const [datePart, timePart] = cleanStr.split('T');
             const [year, month, day] = datePart.split('-');
             const [hours, minutes] = timePart.split(':');
-            
-            if (lang === 'fr') {
-                return `${day}-${month}-${year} à ${hours}:${minutes}`;
-            } else {
-                let h = parseInt(hours, 10);
-                const ampm = h >= 12 ? 'PM' : 'AM';
-                h = h % 12 || 12;
-                return `${year}-${month}-${day} at ${String(h).padStart(2, '0')}:${minutes} ${ampm}`;
-            }
+            return `${day}-${month}-${year} à ${hours}:${minutes}`;
         }
         return datetimeStr; 
     } catch (error) {
@@ -55,7 +36,7 @@ const formatDateTime = (datetimeStr, lang) => {
     }
 };
 
-const ExpandableText = ({ text, lang }) => {
+const ExpandableText = ({ text }) => {
     const [expanded, setExpanded] = useState(false);
     if (!text) return null;
     if (text.length <= 180) {
@@ -71,15 +52,13 @@ const ExpandableText = ({ text, lang }) => {
                 onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
                 className="text-[10px] text-hlzPurple hover:text-white mt-1 font-bold uppercase transition-colors"
             >
-                {expanded ? (lang === 'fr' ? 'Voir moins' : 'See less') : (lang === 'fr' ? 'Voir plus' : 'See more')}
+                {expanded ? 'Voir moins' : 'Voir plus'}
             </button>
         </div>
     );
 };
 
 const App = () => {
-    const [lang, setLang] = useState('fr');
-    const t = TRANSLATIONS[lang]; 
     const [memories, setMemories] = useState([]);
     const [dbTags, setDbTags] = useState([]); 
     const [selectedMemory, setSelectedMemory] = useState(null);
@@ -91,7 +70,7 @@ const App = () => {
     const [session, setSession] = useState(null);
     const [showLogin, setShowLogin] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [isTimelineMinimized, setIsTimelineMinimized] = useState(false); // NOVO ESTADO: Gaveta do mapa
+    const [isTimelineMinimized, setIsTimelineMinimized] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isAdding, setIsAdding] = useState(false);
@@ -164,10 +143,10 @@ const App = () => {
     const handleLogout = async () => await supabase.auth.signOut();
 
     useEffect(() => {
-        if (selectedMemory && timelineRefs.current[selectedMemory.id]) {
+        if (selectedMemory && timelineRefs.current[selectedMemory.id] && !isTimelineMinimized) {
             timelineRefs.current[selectedMemory.id].scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-    }, [selectedMemory]);
+    }, [selectedMemory, isTimelineMinimized]);
 
     const filteredMemories = useMemo(() => {
         let result = memories;
@@ -196,7 +175,7 @@ const App = () => {
 
     useEffect(() => {
         if (!mapInstanceRef.current && mapRef.current) {
-            const map = L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([49.52, -1.80], 12);
+            const map = L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([48.36528183896009, 9.95171907672971], 5);
             tileLayerRef.current = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(map);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
             setTimeout(() => map.invalidateSize(), 250);
@@ -231,7 +210,7 @@ const App = () => {
         setSelectedMemory(mem); 
         setAboutTab(null); 
         setIsAdding(false);
-        setIsTimelineMinimized(false); // SE CLICAR NO MAPA, A GAVETA ABRE SOZINHA
+        setIsTimelineMinimized(false); // Clicar no mapa expande a cronologia automaticamente
         if (mapInstanceRef.current) mapInstanceRef.current.setView([mem.lat, mem.lng], mapInstanceRef.current.getZoom(), { animate: true, duration: 1.2 });
     };
 
@@ -239,7 +218,9 @@ const App = () => {
         const map = mapInstanceRef.current;
         if (!map) return;
         Object.values(markersRef.current).forEach(m => map.removeLayer(m));
-        linesRef.current.forEach(l => map.removeLayer(l));
+        if (linesRef.current && linesRef.current.length > 0) {
+            linesRef.current.forEach(l => map.removeLayer(l));
+        }
         markersRef.current = {}; linesRef.current = [];
 
         filteredMemories.forEach(mem => {
@@ -347,33 +328,60 @@ const App = () => {
         <div className="relative w-full h-screen font-mono text-gray-200 overflow-hidden">
             <div ref={mapRef} id="map" className="h-full w-full absolute inset-0 z-0"></div>
 
-            {/* HEADER GLOBAL / MOBILE SEARCH */}
-            <div className="absolute top-0 left-0 w-full md:w-[400px] p-2 md:p-4 z-[1000] pointer-events-none flex flex-col gap-2">
-                <div className="industrial-panel p-3 md:p-5 border-l-4 border-l-hlzPurple pointer-events-auto flex flex-col shadow-2xl">
+            {/* PAINEL ESQUERDO: MENU GLOBAL */}
+            <div className="absolute top-0 left-0 w-full md:w-[380px] p-2 md:p-4 z-[1000] pointer-events-none flex flex-col gap-2 md:gap-4">
+                <div className="industrial-panel p-3 md:p-5 border-l-4 border-l-hlzPurple pointer-events-auto flex flex-col shadow-2xl md:max-h-[90vh] overflow-y-auto">
                     
-                    <div className="flex items-center gap-3 mb-3">
+                    {/* [DESKTOP] TOP LINKS */}
+                    <div className="hidden md:flex justify-between items-center mb-3">
+                        <div className="flex gap-2 items-center">
+                            <button onClick={() => {setAboutTab('project'); closeModal(); setSelectedMemory(null);}} className="text-[10px] text-gray-400 hover:text-white underline">{t.aboutProjectBtn}</button>
+                            <span className="text-[10px] text-gray-700">|</span>
+                            <button onClick={() => {setAboutTab('author'); closeModal(); setSelectedMemory(null);}} className="text-[10px] text-gray-400 hover:text-white underline">{t.aboutAuthorBtn}</button>
+                        </div>
+                        <div className="flex gap-2 items-center">
+                            {session ? (
+                                <><button onClick={() => setShowTagManager(true)} className="text-gray-400 hover:text-hlzPurple" title={t.manageTags}><Tag size={14} /></button><button onClick={handleLogout} className="text-hlzPurple hover:text-white" title="Logout"><LogOut size={14} /></button></>
+                            ) : (<button onClick={() => setShowLogin(true)} className="text-gray-600 hover:text-hlzPurple" title="Login Admin"><Lock size={14} /></button>)}
+                        </div>
+                    </div>
+
+                    {/* [MOBILE] TÍTULO + HAMBURGER */}
+                    <div className="flex md:hidden items-center gap-3 mb-2">
                         <button onClick={() => setIsMenuOpen(true)} className="text-gray-300 hover:text-white transition-colors bg-gray-900 p-2 rounded-sm border border-gray-800">
                             <Menu size={20} />
                         </button>
-                        <h1 className="text-xl md:text-3xl font-bold text-white tracking-tighter leading-none flex items-center gap-2 flex-1">
+                        <h1 className="text-xl font-bold text-white tracking-tighter leading-none flex items-center gap-2 flex-1">
                             Habiter la Zone
-                            {session && <span className="text-[8px] md:text-[10px] text-green-400 border border-green-400 px-1 bg-green-400/10 tracking-normal font-normal flex items-center gap-1"><Unlock size={8}/></span>}
+                            {session && <span className="text-[8px] text-green-400 border border-green-400 px-1 bg-green-400/10 tracking-normal font-normal flex items-center gap-1"><Unlock size={8}/></span>}
                         </h1>
                     </div>
 
-                    <div className="relative mb-3 shrink-0">
-                        <input type="text" placeholder={t.searchPlaceholder} className="w-full industrial-input p-3 pl-10 text-sm focus:border-hlzPurple transition-colors shadow-inner rounded" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                        <div className="absolute left-3 top-3 text-gray-500"><Search size={16} /></div>
-                        {searchQuery && <button onClick={() => setSearchQuery("")} className="absolute right-3 top-3 text-gray-500 hover:text-white"><X size={16} /></button>}
+                    {/* [DESKTOP] TÍTULO GRANDE */}
+                    <div className="hidden md:flex justify-between items-start mb-2 border-b border-gray-800 pb-2">
+                        <div>
+                            <h1 className="text-4xl font-bold text-white tracking-tighter leading-none flex items-center gap-3">
+                                <span className="block">Habiter<br />la Zone</span>
+                                {session ? <span className="text-[10px] text-green-400 border border-green-400 px-1 bg-green-400/10 tracking-normal font-normal self-center translate-y-[-2px] flex items-center gap-1"><Unlock size={10}/> ADMIN</span> : <span className="text-[10px] text-hlzPurple border border-hlzPurple px-1 bg-hlzPurple/10 tracking-normal font-normal self-center translate-y-[-2px]">SYS.ONLINE</span>}
+                            </h1>
+                        </div>
+                    </div>
+                    
+                    {/* BARRA DE PESQUISA */}
+                    <div className="relative mb-2 md:mb-4 shrink-0 md:mt-4">
+                        <input type="text" placeholder={t.searchPlaceholder} className="w-full industrial-input p-2 md:p-3 pl-8 md:pl-10 text-sm focus:border-hlzPurple transition-colors shadow-inner rounded" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                        <div className="absolute left-2 md:left-3 top-2.5 md:top-3 text-gray-500"><Search size={14} className="md:w-4 md:h-4" /></div>
+                        {searchQuery && <button onClick={() => setSearchQuery("")} className="absolute right-2 md:right-3 top-2 md:top-3 text-gray-500 hover:text-white"><X size={14} className="md:w-4 md:h-4" /></button>}
                     </div>
 
-                    <div className="flex flex-col gap-2">
-                        <div className="flex overflow-x-auto gap-2 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x">
+                    {/* TAGS/FILTROS (Espaços removidos para ficar compacto no mobile) */}
+                    <div className="flex flex-col overflow-x-hidden pr-2">
+                        <div className="flex flex-nowrap md:flex-wrap overflow-x-auto md:overflow-visible gap-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] snap-x pb-1">
                             {Object.keys(currentHierarchy).map(parentTag => {
                                 const data = currentHierarchy[parentTag];
                                 const isActive = activeParentFilters.includes(parentTag);
                                 return (
-                                    <button key={parentTag} onClick={() => toggleParentFilter(parentTag)} style={{ borderColor: isActive ? data.color : '#333', color: isActive ? '#000' : data.color, backgroundColor: isActive ? data.color : 'transparent' }} className={`text-[10px] md:text-xs px-3 py-1.5 border transition-all uppercase hover:border-white font-bold flex items-center gap-1 whitespace-nowrap snap-start shrink-0 rounded`}>
+                                    <button key={parentTag} onClick={() => toggleParentFilter(parentTag)} style={{ borderColor: isActive ? data.color : '#333', color: isActive ? '#000' : data.color, backgroundColor: isActive ? data.color : 'transparent' }} className={`text-[10px] px-2 py-1 md:py-1.5 border transition-all uppercase hover:border-white font-bold flex items-center gap-1 whitespace-nowrap snap-start shrink-0 rounded`}>
                                         #{parentTag} {isActive && data.children.length > 0 && <ChevronRight size={12} className="rotate-90" />}
                                     </button>
                                 );
@@ -382,12 +390,12 @@ const App = () => {
                         {activeParentFilters.map(parentTag => {
                             if (currentHierarchy[parentTag]?.children.length > 0) {
                                 return (
-                                    <div key={`sub-${parentTag}`} className="flex overflow-x-auto gap-2 pb-1 pl-2 border-l-2 bg-[#050505] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ borderColor: currentHierarchy[parentTag].color }}>
+                                    <div key={`sub-${parentTag}`} className="flex flex-nowrap md:flex-wrap overflow-x-auto md:overflow-visible gap-2 p-2 md:p-3 mt-1 ml-2 border-l-2 bg-[#050505] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ borderColor: currentHierarchy[parentTag].color }}>
                                         {currentHierarchy[parentTag].children.map(childTag => {
                                             const color = currentHierarchy[parentTag].color;
                                             const isActive = activeSubFilters.includes(childTag);
                                             return (
-                                                <button key={childTag} onClick={() => toggleSubFilter(childTag)} style={{ borderColor: isActive ? color : '#444', color: isActive ? '#000' : color, backgroundColor: isActive ? color : 'transparent' }} className={`text-[9px] md:text-[10px] px-2 py-1 border transition-all uppercase hover:border-white opacity-90 whitespace-nowrap shrink-0 rounded-sm`}>
+                                                <button key={childTag} onClick={() => toggleSubFilter(childTag)} style={{ borderColor: isActive ? color : '#444', color: isActive ? '#000' : color, backgroundColor: isActive ? color : 'transparent' }} className={`text-[9px] px-2 py-0.5 md:py-1 border transition-all uppercase hover:border-white opacity-90 whitespace-nowrap shrink-0 rounded-sm`}>
                                                     {childTag}
                                                 </button>
                                             );
@@ -398,18 +406,22 @@ const App = () => {
                             return null;
                         })}
                     </div>
-
-                    {(activeParentFilters.length > 0 || searchQuery) && (
-                        <div className="flex justify-end pt-2 mt-1">
-                            <button onClick={() => { setActiveParentFilters([]); setActiveSubFilters([]); setSearchQuery(""); }} className="text-[10px] text-gray-500 hover:text-white transition-colors">{t.clear}</button>
+                    
+                    {/* [DESKTOP] MAP TYPES */}
+                    <div className="hidden md:flex justify-between items-center pt-3 mt-2 border-t border-gray-800">
+                        <span className="text-[9px] text-gray-500 uppercase tracking-widest">{t.mapType}:</span>
+                        <div className="flex gap-1">
+                            <button onClick={() => setMapStyle('dark')} className={`px-2 py-0.5 text-[9px] font-bold border rounded uppercase transition-colors ${mapStyle === 'dark' ? 'bg-hlzPurple text-black border-hlzPurple' : 'bg-black text-gray-500 border-gray-800'}`}>{t.mapStyleDark}</button>
+                            <button onClick={() => setMapStyle('light')} className={`px-2 py-0.5 text-[9px] font-bold border rounded uppercase transition-colors ${mapStyle === 'light' ? 'bg-gray-200 text-black border-gray-200' : 'bg-black text-gray-500 border-gray-800'}`}>{t.mapStyleLight}</button>
+                            <button onClick={() => setMapStyle('satellite')} className={`px-2 py-0.5 text-[9px] font-bold border rounded uppercase transition-colors ${mapStyle === 'satellite' ? 'bg-green-700 text-white border-green-700' : 'bg-black text-gray-500 border-gray-800'}`}>{t.mapStyleSat}</button>
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
 
-            {/* DRAWER MENU */}
+            {/* DRAWER MENU (Mobile Apenas) */}
             {isMenuOpen && (
-                <div className="fixed inset-0 z-[3000] flex bg-black/70 backdrop-blur-sm fade-in" onClick={() => setIsMenuOpen(false)}>
+                <div className="fixed inset-0 z-[3000] flex bg-black/70 backdrop-blur-sm fade-in md:hidden" onClick={() => setIsMenuOpen(false)}>
                     <div className="w-[80%] max-w-[320px] h-full bg-[#0a0a0a] border-r border-gray-800 shadow-[20px_0_50px_rgba(0,0,0,0.8)] p-6 flex flex-col gap-6" onClick={e => e.stopPropagation()}>
                         
                         <div className="flex justify-between items-center border-b border-gray-800 pb-4">
@@ -422,14 +434,6 @@ const App = () => {
                             <button onClick={() => {setAboutTab('author'); setIsMenuOpen(false);}} className="text-left text-sm text-gray-300 hover:text-hlzPurple uppercase tracking-widest transition-colors font-bold">{t.aboutAuthorBtn}</button>
 
                             <div className="h-px bg-gray-800 w-full my-1"></div>
-
-                            <div className="flex flex-col gap-3">
-                                <span className="text-[10px] text-gray-600 uppercase tracking-widest">Langue / Language:</span>
-                                <div className="flex gap-2">
-                                    <button onClick={() => {setLang('fr'); setIsMenuOpen(false);}} className={`flex-1 py-2 text-xs font-bold border rounded ${lang === 'fr' ? 'bg-hlzPurple text-black border-hlzPurple' : 'bg-black text-gray-500 border-gray-800 hover:border-gray-500'}`}>FR</button>
-                                    <button onClick={() => {setLang('en'); setIsMenuOpen(false);}} className={`flex-1 py-2 text-xs font-bold border rounded ${lang === 'en' ? 'bg-hlzPurple text-black border-hlzPurple' : 'bg-black text-gray-500 border-gray-800 hover:border-gray-500'}`}>EN</button>
-                                </div>
-                            </div>
 
                             <div className="flex flex-col gap-3 mt-2">
                                 <span className="text-[10px] text-gray-600 uppercase tracking-widest">{t.mapType}:</span>
@@ -455,31 +459,30 @@ const App = () => {
                 </div>
             )}
 
-            {/* PAINEL DA CRONOLOGIA COM SISTEMA DE GAVETA (MINIMIZAR/MAXIMIZAR) NO MOBILE */}
-            <div className={`absolute bottom-0 left-0 md:top-0 md:right-0 md:left-auto w-full md:w-[420px] transition-all duration-300 z-[950] pointer-events-none flex flex-col p-2 md:p-4 ${isTimelineMinimized ? 'h-[75px] md:h-full' : 'h-[45vh] md:h-full'}`}>
+            {/* PAINEL DA CRONOLOGIA COM GAVETA (Mobile e Desktop) */}
+            <div className={`absolute bottom-0 left-0 md:top-4 md:right-4 md:bottom-4 md:left-auto w-full md:w-[420px] transition-all duration-300 z-[950] pointer-events-none flex flex-col p-2 md:p-0 ${isTimelineMinimized ? 'h-[75px] md:h-[75px]' : 'h-[50vh] md:h-full'}`}>
                 <div className="industrial-panel pointer-events-auto flex-1 flex flex-col shadow-2xl md:border-l md:border-t-0 border-t-2 border-hlzPurple overflow-hidden bg-[#0a0a0af0]">
                     
-                    {/* HANDLE MOBILE (Barra cinza no topo) */}
+                    {/* CABEÇALHO COM CHEVRONS (Universal) */}
                     <div 
-                        className="w-full flex justify-center pt-3 pb-1 md:hidden cursor-pointer"
+                        className="px-4 py-3 md:py-4 border-b border-gray-800 z-20 shrink-0 flex justify-between items-center cursor-pointer bg-black md:bg-[#0a0a0a]"
                         onClick={() => setIsTimelineMinimized(!isTimelineMinimized)}
                     >
-                        <div className="w-12 h-1.5 bg-gray-600 rounded-full"></div>
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-[10px] text-gray-500 uppercase tracking-widest">{t.timeline}</h3>
+                            <span className="text-[10px] text-hlzPurple font-bold">[{timelineMemories.length}]</span>
+                        </div>
+                        
+                        <div className="text-hlzPurple flex items-center gap-1 bg-hlzPurple/10 px-2 py-0.5 rounded">
+                            <span className="text-[8px] uppercase font-bold tracking-widest">{isTimelineMinimized ? 'Agrandir' : 'Réduire'}</span>
+                            {isTimelineMinimized ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        </div>
                     </div>
 
-                    {/* CABEÇALHO (Também serve para abrir/fechar no celular) */}
-                    <div 
-                        className="px-4 pb-2 pt-1 md:pt-4 border-b border-gray-800 z-20 shrink-0 flex justify-between items-center cursor-pointer md:cursor-default"
-                        onClick={() => setIsTimelineMinimized(!isTimelineMinimized)}
-                    >
-                        <h3 className="text-[10px] text-gray-500 uppercase tracking-widest">{t.timeline}</h3>
-                        <span className="text-[10px] text-hlzPurple font-bold">[{timelineMemories.length}]</span>
-                    </div>
-
-                    <div className={`flex-1 overflow-y-auto p-3 md:p-4 flex flex-col gap-3 ${isTimelineMinimized ? 'hidden md:flex' : 'flex'}`}>
+                    <div className={`flex-1 overflow-y-auto p-3 md:p-4 flex flex-col gap-3 ${isTimelineMinimized ? 'hidden' : 'flex'}`}>
                         {timelineMemories.map(mem => {
                             const isExpanded = selectedMemory?.id === mem.id;
-                            const displayDate = formatDateTime(mem.date, lang);
+                            const displayDate = formatDateTime(mem.date);
                             return (
                                 <div key={mem.id} ref={el => timelineRefs.current[mem.id] = el} onClick={() => handleSelectMemory(mem)} className={`bg-[#050505] border transition-all duration-300 cursor-pointer group rounded-sm ${isExpanded ? 'border-hlzPurple' : 'border-gray-800'}`}>
                                     <div className="p-3">
@@ -511,7 +514,7 @@ const App = () => {
                                                 {mem.type === 'text' && <FileText size={32} color="#555" />}
                                             </div>
                                             
-                                            {mem.description && <ExpandableText text={mem.description} lang={lang} />}
+                                            {mem.description && <ExpandableText text={mem.description} />}
                                             
                                             <div className="flex flex-wrap gap-1.5 mb-3 mt-2">
                                                 {mem.tags && mem.tags.map(tag => (<span key={tag} style={{color: getDerivedTagColor(tag), borderColor: getDerivedTagColor(tag)}} className="text-[9px] px-2 py-0.5 border bg-white bg-opacity-10 uppercase rounded">#{tag}</span>))}
@@ -696,40 +699,44 @@ const App = () => {
                 </div>
             )}
 
-            {/* MODAL ABOUT (À PROPOS) */}
+            {/* MODAL ABOUT (À PROPOS) - IMAGENS FULL BLEED NO MOBILE */}
             {aboutTab && (
-                <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 md:p-8">
-                    <div className="industrial-panel p-4 md:p-8 w-full max-w-4xl max-h-[90vh] overflow-y-auto fade-in shadow-[0_0_50px_rgba(166,33,255,0.2)] border-hlzPurple rounded">
-                        <div className="flex justify-between items-start mb-6 border-b border-gray-800 pb-4">
-                            <div>
-                                <div className="flex items-center gap-2 mb-2"><span className="w-1.5 h-1.5 bg-hlzPurple animate-pulse"></span><p className="text-hlzPurple text-[10px] tracking-widest font-bold uppercase">INFO SYS</p></div>
-                                <h2 className="text-3xl font-bold text-white uppercase leading-none tracking-tight">{aboutTab === 'project' ? t.aboutTitle : t.authorTitle}</h2>
+                <div className="fixed inset-0 z-[4000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-0 md:p-8">
+                    <div className="industrial-panel w-full max-w-4xl h-full md:h-auto md:max-h-[90vh] overflow-y-auto fade-in shadow-[0_0_50px_rgba(166,33,255,0.2)] md:border border-hlzPurple md:rounded flex flex-col">
+                        <div className="p-4 md:p-8 flex-1 flex flex-col">
+                            <div className="flex justify-between items-start mb-6 border-b border-gray-800 pb-4">
+                                <div>
+                                    <div className="flex items-center gap-2 mb-2"><span className="w-1.5 h-1.5 bg-hlzPurple animate-pulse"></span><p className="text-hlzPurple text-[10px] tracking-widest font-bold uppercase">INFO SYS</p></div>
+                                    <h2 className="text-3xl font-bold text-white uppercase leading-none tracking-tight">{aboutTab === 'project' ? t.aboutTitle : t.authorTitle}</h2>
+                                </div>
+                                <button onClick={() => setAboutTab(null)} className="text-gray-600 hover:text-white transition-colors"><X size={24}/></button>
                             </div>
-                            <button onClick={() => setAboutTab(null)} className="text-gray-600 hover:text-white transition-colors"><X size={24}/></button>
-                        </div>
-                        <div className="flex gap-6 mb-8 border-b border-gray-800">
-                            <button onClick={() => setAboutTab('project')} className={`pb-2 text-sm font-bold uppercase tracking-widest transition-colors ${aboutTab === 'project' ? 'text-hlzPurple border-b-2 border-hlzPurple' : 'text-gray-500 hover:text-gray-300'}`}>{t.aboutTitle}</button>
-                            <button onClick={() => setAboutTab('author')} className={`pb-2 text-sm font-bold uppercase tracking-widest transition-colors ${aboutTab === 'author' ? 'text-hlzPurple border-b-2 border-hlzPurple' : 'text-gray-500 hover:text-gray-300'}`}>{t.authorTitle}</button>
-                        </div>
-                        <div className="space-y-8 flex-1">
-                            {aboutTab === 'project' && (
-                                <div className="fade-in grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                                    <div>
-                                        <h3 className="text-xl font-bold text-white uppercase mb-4 border-l-2 border-hlzPurple pl-3">{t.aboutProjectTitle}</h3>
-                                        <p className="text-sm text-gray-400 leading-relaxed text-justify font-light whitespace-pre-wrap">{t.aboutProjectDesc}</p>
+                            <div className="flex gap-6 mb-8 border-b border-gray-800 shrink-0">
+                                <button onClick={() => setAboutTab('project')} className={`pb-2 text-sm font-bold uppercase tracking-widest transition-colors ${aboutTab === 'project' ? 'text-hlzPurple border-b-2 border-hlzPurple' : 'text-gray-500 hover:text-gray-300'}`}>{t.aboutTitle}</button>
+                                <button onClick={() => setAboutTab('author')} className={`pb-2 text-sm font-bold uppercase tracking-widest transition-colors ${aboutTab === 'author' ? 'text-hlzPurple border-b-2 border-hlzPurple' : 'text-gray-500 hover:text-gray-300'}`}>{t.authorTitle}</button>
+                            </div>
+                            <div className="space-y-8 flex-1">
+                                {aboutTab === 'project' && (
+                                    <div className="fade-in flex flex-col md:grid md:grid-cols-2 gap-6 items-center">
+                                        <div>
+                                            <h3 className="text-xl font-bold text-white uppercase mb-4 border-l-2 border-hlzPurple pl-3">{t.aboutProjectTitle}</h3>
+                                            <p className="text-sm text-gray-400 leading-relaxed text-justify font-light whitespace-pre-wrap">{t.aboutProjectDesc}</p>
+                                        </div>
+                                        {/* IMAGEM: Full Bleed (sem bordas) no celular, com bordas no Desktop */}
+                                        <img src="https://pub-23caa2fc6265497690132d2d602d34b7.r2.dev/InfosMisia/camping.png" alt="Projet" className="w-[calc(100%+2rem)] md:w-full max-w-none md:max-w-full h-auto -mx-4 md:mx-0 border-y md:border border-gray-800 shadow-lg md:rounded" />
                                     </div>
-                                    <img src="https://pub-23caa2fc6265497690132d2d602d34b7.r2.dev/InfosMisia/camping.png" alt="Projet" className="w-full h-auto border border-gray-800 shadow-lg rounded" />
-                                </div>
-                            )}
-                            {aboutTab === 'author' && (
-                                <div className="fade-in grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                                    <div>
-                                        <h3 className="text-xl font-bold text-white uppercase mb-4 border-l-2 border-hlzPurple pl-3">{t.aboutAuthorTitle}</h3>
-                                        <p className="text-sm text-gray-400 leading-relaxed text-justify font-light whitespace-pre-wrap">{t.aboutAuthorDesc}</p>
+                                )}
+                                {aboutTab === 'author' && (
+                                    <div className="fade-in flex flex-col md:grid md:grid-cols-2 gap-6 items-center">
+                                        <div>
+                                            <h3 className="text-xl font-bold text-white uppercase mb-4 border-l-2 border-hlzPurple pl-3">{t.aboutAuthorTitle}</h3>
+                                            <p className="text-sm text-gray-400 leading-relaxed text-justify font-light whitespace-pre-wrap">{t.aboutAuthorDesc}</p>
+                                        </div>
+                                        {/* IMAGEM: Full Bleed (sem bordas) no celular, com bordas no Desktop */}
+                                        <img src="https://pub-23caa2fc6265497690132d2d602d34b7.r2.dev/InfosMisia/Misia_dessinMagali.png" alt="Autrice" className="w-[calc(100%+2rem)] md:w-full max-w-none md:max-w-full h-auto -mx-4 md:mx-0 border-y md:border border-gray-800 shadow-lg md:rounded" />
                                     </div>
-                                    <img src="https://pub-23caa2fc6265497690132d2d602d34b7.r2.dev/InfosMisia/Misia_dessinMagali.png" alt="Autrice" className="w-full h-auto border border-gray-800 shadow-lg rounded" />
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
