@@ -58,6 +58,51 @@ const ExpandableText = ({ text }) => {
     );
 };
 
+const CARTO_API_KEY = import.meta.env.VITE_CARTO_API_KEY || '';
+
+const createMapTileLayer = (style) => {
+    if (style === 'satellite') {
+        return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Esri World Imagery'
+        });
+    }
+
+    if (CARTO_API_KEY) {
+        const theme = style === 'light' ? 'light_all' : 'dark_all';
+        return L.tileLayer(`https://{s}.basemaps.cartocdn.com/${theme}/{z}/{x}/{y}{r}.png?key=${CARTO_API_KEY}`, {
+            subdomains: 'abcd',
+            maxZoom: 20,
+            attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
+        });
+    }
+
+    // Fallback sem API key (evita marca d'água "API KEY REQUIRED" da CARTO)
+    if (style === 'light') {
+        return L.layerGroup([
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+                maxNativeZoom: 16,
+                maxZoom: 20
+            }),
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+                maxNativeZoom: 16,
+                maxZoom: 20
+            })
+        ]);
+    }
+
+    return L.layerGroup([
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+            maxNativeZoom: 16,
+            maxZoom: 20
+        }),
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {
+            maxNativeZoom: 16,
+            maxZoom: 20
+        })
+    ]);
+};
+
 const App = () => {
     const [memories, setMemories] = useState([]);
     const [dbTags, setDbTags] = useState([]); 
@@ -86,6 +131,7 @@ const App = () => {
     const mapRef = useRef(null);
     const mapInstanceRef = useRef(null);
     const tileLayerRef = useRef(null);
+    const currentMapStyleRef = useRef(mapStyle);
     const markersRef = useRef({});
     const linesRef = useRef([]);
     const timelineRefs = useRef({});
@@ -176,7 +222,7 @@ const App = () => {
     useEffect(() => {
         if (!mapInstanceRef.current && mapRef.current) {
             const map = L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([48.36528183896009, 9.95171907672971], 5);
-            tileLayerRef.current = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', maxZoom: 20 }).addTo(map);
+            tileLayerRef.current = createMapTileLayer(mapStyle).addTo(map);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
             setTimeout(() => map.invalidateSize(), 250);
 
@@ -199,11 +245,10 @@ const App = () => {
 
     useEffect(() => {
         if (!mapInstanceRef.current || !tileLayerRef.current) return;
+        if (currentMapStyleRef.current === mapStyle) return;
+        currentMapStyleRef.current = mapStyle;
         mapInstanceRef.current.removeLayer(tileLayerRef.current);
-        let url = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-        if (mapStyle === 'light') url = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-        else if (mapStyle === 'satellite') url = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-        tileLayerRef.current = L.tileLayer(url, { subdomains: 'abcd', maxZoom: 20 }).addTo(mapInstanceRef.current);
+        tileLayerRef.current = createMapTileLayer(mapStyle).addTo(mapInstanceRef.current);
     }, [mapStyle]);
 
     const handleSelectMemory = (mem) => {

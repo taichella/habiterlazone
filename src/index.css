@@ -1,10 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
 @import "leaflet/dist/leaflet.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
-@import "leaflet/dist/leaflet.css";
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar { width: 4px; }
